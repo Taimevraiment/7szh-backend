@@ -19,7 +19,7 @@ export class GeniusInvokationGame {
         this.resetOnly = 0; // 达到2进行统一重置
         this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
     }
-    init(newPlayer, io) {
+    init(newPlayer) {
         const pidx = this.players.length;
         const player = {
             id: newPlayer.id,

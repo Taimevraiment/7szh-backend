@@ -114,7 +114,7 @@ io.on('connection', socket => {
                 removeById(pid, room.players);
             }
             if (room.onlinePlayersCnt <= 0) {
-                me.rid = -1;
+                room.players.forEach(p => p.rid = -1);
                 removeById(room.id, roomList);
             } else {
                 roomInfoUpdate(room.id);
@@ -160,7 +160,7 @@ io.on('connection', socket => {
         const roomId = genId(roomList);
         const me = getPlayer(pid);
         const newRoom = new GeniusInvokationGame(roomId, roomName, roomPassword);
-        const player = newRoom.init(me, io);
+        const player = newRoom.init(me);
         playerList[getPlayerIdx(pid)] = player;
         roomList.push(newRoom);
         socket.join(`7szh-${roomId}`);
@@ -170,16 +170,16 @@ io.on('connection', socket => {
     });
     // 加入房间
     socket.on('enterRoom', data => {
-        const { roomId, roomPassword } = data;
+        const { roomId, roomPassword, isForce } = data;
         const me = getPlayer(pid);
         const room = getRoom(roomId);
-        if (!room) return socket.emit('enterRoom', { err: '房间不存在！' });
-        if (room.password != roomPassword) return socket.emit('enterRoom', { err: '密码错误！' });
-        if (me.rid > 0) return socket.emit('enterRoom', { err: '你还有正在进行的游戏！' });
-        const isLookon = room.players.length == 2;
+        if (!room) return socket.emit('enterRoom', { err: `房间号${roomId}不存在！` });
+        if (room.password != roomPassword && !isForce) return socket.emit('enterRoom', { err: '密码错误！' });
+        if (me.rid > 0 && me.rid != roomId) return socket.emit('enterRoom', { err: '你还有正在进行的游戏！' });
         socket.join(`7szh-${roomId}`);
-        const pidx = room.players.findIndex(p => p.id == me.id);
+        const pidx = getIdxById(me.id, room.players);
         const isInGame = pidx > -1;
+        const isLookon = room.players.length >= 2 && !isInGame;
         if (room.isStart) {
             if (isInGame) {
                 ++room.onlinePlayersCnt;
@@ -187,7 +187,7 @@ io.on('connection', socket => {
             }
         } else {
             if (!isInGame) {
-                const player = room.init(me, io);
+                const player = room.init(me);
                 playerList[getPlayerIdx(pid)] = player;
             }
         }
@@ -196,15 +196,9 @@ io.on('connection', socket => {
     });
     // 退出房间
     socket.on('exitRoom', () => leaveRoom('exitRoom'));
-
-    socket.on('startServer', data => {
-        const { roomId, pidx } = data;
-        const GameServer = roomList.find(gs => gs.id == roomId);
-        GameServer.init(data.startIdx, pidx, io).start();
-    });
-
+    // 房间信息更新
     socket.on('roomInfoUpdate', data => roomInfoUpdate(data.roomId));
-
+    // 发送数据到服务器
     socket.on('sendToServer', data => {
         const me = getPlayer(pid);
         const room = getRoom(me.rid);

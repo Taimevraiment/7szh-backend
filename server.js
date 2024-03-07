@@ -138,6 +138,9 @@ io.on('connection', socket => {
                 username = prevname;
                 console.info(`[${new Date()}]:玩家[${prevname}]重新连接了...`);
                 removePlayerList.get(id)?.cancel();
+                if (player.rid > 0 && getRoomIdx(player.rid) > -1) {
+                    socket.emit('continueGame', { roomId: player.rid });
+                }
             }
         } else {
             console.info(`[${new Date()}]:新玩家[${name}]连接了...`);
@@ -170,7 +173,7 @@ io.on('connection', socket => {
     });
     // 加入房间
     socket.on('enterRoom', data => {
-        const { roomId, roomPassword, isForce } = data;
+        const { roomId, roomPassword = '', isForce = false } = data;
         const me = getPlayer(pid);
         const room = getRoom(roomId);
         if (!room) return socket.emit('enterRoom', { err: `房间号${roomId}不存在！` });

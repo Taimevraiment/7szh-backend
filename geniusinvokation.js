@@ -55,7 +55,7 @@ export class GeniusInvokationGame {
             isOffline: false,
         };
         this.players.push(player);
-        this.onlinePlayersCnt = this.players.length % 3;
+        this.onlinePlayersCnt = Math.min(2, this.players.length);
         this.round = 1;
         this.isDispatchingCard = false;
         this.resetOnly = 0;

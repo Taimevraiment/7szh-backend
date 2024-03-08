@@ -106,10 +106,12 @@ io.on('connection', socket => {
             socket.leave(`7szh-${me.rid}`);
             const room = getRoom(me.rid);
             if (!room) throw new Error(`${eventName}:未找到房间,rid:${me.rid}`);
-            --room.onlinePlayersCnt;
-            if (room.isStart) {
-                me.isOffline = true;
-            } else {
+            const pidx = getIdxById(me.id, room.players);
+            if (pidx < 2) {
+                --room.onlinePlayersCnt;
+                if (room.isStart) me.isOffline = true;
+            }
+            if (!room.isStart) {
                 me.rid = -1;
                 removeById(pid, room.players);
             }
@@ -189,10 +191,8 @@ io.on('connection', socket => {
                 room.players[pidx].isOffline = false;
             }
         } else {
-            if (!isInGame) {
-                const player = room.init(me);
-                playerList[getPlayerIdx(pid)] = player;
-            }
+            const player = room.init(me);
+            playerList[getPlayerIdx(pid)] = player;
         }
         emitRoomList();
         socket.emit('enterRoom', { roomId, isLookon });

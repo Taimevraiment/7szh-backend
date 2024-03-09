@@ -36,7 +36,13 @@ const getById = (id, list) => list.find(v => v.id == id);
 // 按id获取idx
 const getIdxById = (id, list) => list.findIndex(v => v.id == id);
 // 按id去除
-const removeById = (id, list) => list.splice(getIdxById(id, list), 1);
+const removeById = (id, ...lists) => {
+    lists.forEach(list => {
+        const idx = getIdxById(id, list);
+        if (idx == -1) return;
+        list.splice(idx, 1);
+    });
+}
 
 // 获取玩家信息
 const getPlayer = pid => getById(pid, playerList);
@@ -46,18 +52,6 @@ const getPlayerIdx = pid => getIdxById(pid, playerList);
 const getRoom = rid => getById(rid, roomList);
 // 获取房间索引
 const getRoomIdx = rid => getIdxById(rid, roomList);
-// 发送房间列表
-const emitRoomList = () => {
-    io.emit('getRoomList', {
-        rlist: roomList.map(r => ({
-            id: r.id,
-            name: r.name,
-            isStart: r.isStart,
-            playerCnt: r.players.length,
-            hasPassWord: r.password != '',
-        })),
-    });
-}
 // 玩家离线销毁
 const removePlayer = pid => {
     const time = setTimeout(() => {
@@ -74,7 +68,7 @@ const removePlayer = pid => {
 // 更新房间信息
 const roomInfoUpdate = roomId => {
     const room = getRoom(roomId);
-    if (!room) throw new Error(`房间${roomId}不存在`);
+    if (!room) return console.error(`ERROR:roomInfoUpdate:房间${roomId}不存在`);
     io.to(`7szh-${room.id}`).emit('roomInfoUpdate', {
         players: room.players,
         isStart: room.isStart,
@@ -84,36 +78,43 @@ const roomInfoUpdate = roomId => {
 
 io.on('connection', socket => {
     let pid = -1;
-    // 发送玩家列表
-    const emitPlayerList = () => {
-        io.emit('getPlayerList', {
+    // 发送玩家和房间列表
+    const emitPlayerAndRoomList = () => {
+        io.emit('getPlayerAndRoomList', {
             plist: playerList.map(p => ({
                 id: p.id,
                 name: p.name,
                 rid: p.rid ?? -1,
             })).filter(p => !removePlayerList.has(p.id)),
+            rlist: roomList.map(r => ({
+                id: r.id,
+                name: r.name,
+                isStart: r.isStart,
+                playerCnt: r.players.length,
+                hasPassWord: r.password != '',
+            })),
         });
     }
     // 离开房间
     const leaveRoom = eventName => {
         if (pid == -1) return;
         const me = getPlayer(pid);
-        if (!me) throw new Error(`${eventName}:未找到玩家,me:${JSON.stringify(me)}`);
+        if (!me) return console.error(`ERROR:${eventName}:未找到玩家,me:${JSON.stringify(me)}`);
         const log = eventName == 'exitRoom' ? `[${new Date()}]:玩家[${me.name}]离开了房间[${me.rid}]...` :
             eventName == 'disconnect' ? `[${new Date()}]:玩家[${me.name}]断开连接了...` : '';
         console.info(log);
         if (me.rid > 0) {
             socket.leave(`7szh-${me.rid}`);
             const room = getRoom(me.rid);
-            if (!room) throw new Error(`${eventName}:未找到房间,rid:${me.rid}`);
+            if (!room) return console.error(`ERROR:${eventName}:未找到房间,rid:${me.rid}`);
             const pidx = getIdxById(me.id, room.players);
-            if (pidx < 2) {
+            if (pidx > -1) {
                 --room.onlinePlayersCnt;
                 if (room.isStart) me.isOffline = true;
             }
-            if (!room.isStart) {
+            if (!room.isStart || pidx == -1) {
                 me.rid = -1;
-                removeById(pid, room.players);
+                removeById(pid, room.players, room.watchers);
             }
             if (room.onlinePlayersCnt <= 0) {
                 room.players.forEach(p => p.rid = -1);
@@ -123,7 +124,7 @@ io.on('connection', socket => {
             }
         }
         if (eventName == 'disconnect') removePlayer(me.id);
-        emitPlayerList();
+        emitPlayerAndRoomList();
     }
     // 登录/改名/重连
     socket.on('login', data => {
@@ -150,13 +151,10 @@ io.on('connection', socket => {
             playerList.push({ id: pid, name, rid: -1 });
         }
         socket.emit('login', { pid, name: username });
-        emitPlayerList();
-        emitRoomList();
+        emitPlayerAndRoomList();
     });
-    // 发送玩家列表
-    socket.on('getPlayerList', emitPlayerList);
-    // 发送房间列表
-    socket.on('getRoomList', emitRoomList);
+    // 发送玩家和房间列表
+    socket.on('getPlayerAndRoomList', emitPlayerAndRoomList);
     // 断开连接
     socket.on('disconnect', () => leaveRoom('disconnect'));
     // 创建房间
@@ -169,9 +167,8 @@ io.on('connection', socket => {
         playerList[getPlayerIdx(pid)] = player;
         roomList.push(newRoom);
         socket.join(`7szh-${roomId}`);
-        emitRoomList();
-        emitPlayerList();
-        socket.emit('enterRoom', { roomId });
+        emitPlayerAndRoomList();
+        socket.emit('enterRoom', { roomId, players: newRoom.players });
     });
     // 加入房间
     socket.on('enterRoom', data => {
@@ -180,22 +177,20 @@ io.on('connection', socket => {
         const room = getRoom(roomId);
         if (!room) return socket.emit('enterRoom', { err: `房间号${roomId}不存在！` });
         if (room.password != roomPassword && !isForce) return socket.emit('enterRoom', { err: '密码错误！' });
-        if (me.rid > 0 && me.rid != roomId) return socket.emit('enterRoom', { err: '你还有正在进行的游戏！' });
+        if (me.rid > 0 && me.rid != roomId) return socket.emit('enterRoom', { err: `你还有正在进行的游戏！rid:${me.rid}` });
         socket.join(`7szh-${roomId}`);
         const pidx = getIdxById(me.id, room.players);
         const isInGame = pidx > -1;
         const isLookon = room.players.length >= 2 && !isInGame;
-        if (room.isStart) {
-            if (isInGame) {
-                ++room.onlinePlayersCnt;
-                room.players[pidx].isOffline = false;
-            }
+        if (room.isStart && isInGame) {
+            ++room.onlinePlayersCnt;
+            room.players[pidx].isOffline = false;
         } else {
             const player = room.init(me);
             playerList[getPlayerIdx(pid)] = player;
         }
-        emitRoomList();
-        socket.emit('enterRoom', { roomId, isLookon });
+        emitPlayerAndRoomList();
+        socket.emit('enterRoom', { roomId, isLookon, players: room.players });
     });
     // 退出房间
     socket.on('exitRoom', () => leaveRoom('exitRoom'));
@@ -204,7 +199,9 @@ io.on('connection', socket => {
     // 发送数据到服务器
     socket.on('sendToServer', data => {
         const me = getPlayer(pid);
+        if (!me) return console.error(`ERROR:sendToServer:未找到玩家-pid:${pid}`);
         const room = getRoom(me.rid);
+        if (!room) return console.error(`ERROR:sendToServer:未找到房间-rid:${me.rid}`);
         room.infoHandle(data, io);
     });
 

@@ -5,6 +5,7 @@ export class GeniusInvokationGame {
         this.name = name || `房间${id}`; // 房间名
         this.password = password; // 房间密码
         this.players = []; // 玩家数组
+        this.watchers = []; // 观战玩家
         this.cpidx = 0; // 当前回合玩家 currentPlayerIdx
         this.isStart = false; // 是否开始游戏
         this.phase = 0; // 阶段
@@ -14,13 +15,12 @@ export class GeniusInvokationGame {
         this.leastPlayerCnt = 2; // 最少游戏人数
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
-        this.SKILL_TYPE = ['', '普通攻击', '元素战技', '元素爆发', '被动技能'];
         this.isDispatchingCard = false; // 是否正在进行发牌动画
         this.resetOnly = 0; // 达到2进行统一重置
         this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
     }
     init(newPlayer) {
-        const pidx = this.players.length;
+        const pidx = this.players.length + this.watchers.length;
         const player = {
             id: newPlayer.id,
             name: newPlayer.name,
@@ -36,7 +36,6 @@ export class GeniusInvokationGame {
             phase: Player.PHASE.NOT_READY,
             info: '', // 右上角提示信息
             willGetCard: [],
-            pidx,
             hidx: -1,
             did: newPlayer.did ?? -1,
             canAction: false,
@@ -54,12 +53,14 @@ export class GeniusInvokationGame {
             },
             isOffline: false,
         };
-        this.players.push(player);
-        this.onlinePlayersCnt = Math.min(2, this.players.length);
-        this.round = 1;
-        this.isDispatchingCard = false;
-        this.resetOnly = 0;
-        console.info(`init-rid:${this.id}-pid:${newPlayer.id}`);
+        if (pidx < 2) {
+            this.players.push(player);
+            this.onlinePlayersCnt = Math.min(2, this.players.length);
+        } else {
+            this.watchers.push(player);
+        }
+        this.players.forEach((p, pi) => p.pidx = pi);
+        console.info(`init-rid:${this.id}-pid:${newPlayer.id}-pidx:${pidx}`);
         return player;
     }
     start() {
@@ -101,7 +102,6 @@ export class GeniusInvokationGame {
                 startIdx: this.startIdx,
                 execIdx: this.players[0].isOffline ? 1 : 0,
                 log: this.log,
-                gameType: 2,
                 flag: dataOpt.flag ?? flag,
             };
             console.info('server:', flag);
@@ -426,7 +426,7 @@ export class GeniusInvokationGame {
         dataOpt.isSendActionInfo = 2100;
         await this.doCmd(skillcmds[0], cidx, dataOpt, emit);
         await this.doCmd(skillcmds[1], cidx ^ 1, dataOpt, emit);
-        this.log.push(`[${this.players[cidx].name}][${frontHero.name}]使用了[${this.SKILL_TYPE[currSkill.type]}][${currSkill.name}]`);
+        this.log.push(`[${this.players[cidx].name}][${frontHero.name}]使用了[${SKILL_TYPE[currSkill.type]}][${currSkill.name}]`);
     }
     changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, type, dataOpt, emit) {// 转变回合人
         const isOppoActionEnd = this.players[cidx ^ 1]?.phase >= Player.PHASE.ACTION_END;
@@ -804,3 +804,6 @@ class Player {
         DIE_CHANGE_ACTION_END: 10,
     }
 }
+
+const SKILL_TYPE = ['', '普通攻击', '元素战技', '元素爆发', '被动技能'];
+

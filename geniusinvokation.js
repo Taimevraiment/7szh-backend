@@ -91,7 +91,7 @@ export class GeniusInvokationGame {
         console.info('start');
     }
     async infoHandle(data, io) {
-        let emitFlag = 'getPlayer';
+        let emitFlag = 'roomInfoUpdate';
         const dataOpt = { isSendActionInfo: false };
         const emit = (option = {}, flag = '', isSend = true) => {
             const rdata = {
@@ -371,8 +371,6 @@ export class GeniusInvokationGame {
         dataOpt.willDamage = willDamage;
         if (esummon) this.players[cidx ^ 1].summon = [...esummon];
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
-        const eFrontHero = this.players[cidx ^ 1].heros[this.players[cidx ^ 1].hidx];
-        let cspidx = cidx;
         let isQuickAction = false;
         if (statusId) { // 阵营/角色状态发动
             dataOpt.isSendActionInfo = 2000;
@@ -380,17 +378,17 @@ export class GeniusInvokationGame {
                 const [stsId, stype, isOppo, ohidx = -1, isSwitchAtking, iqa] = statusId;
                 isQuickAction = iqa;
                 const status = ['inStatus', 'outStatus'][stype];
-                cspidx = (cidx + isOppo) % 2;
-                const curStatuses = (isOppo ? eFrontHero : ohidx > -1 ? this.players[cspidx].heros[stype == 0 ? ohidx : this.players[cspidx].hidx] : frontHero)[status];
+                const stshero = ohidx == -1 || stype == 1 ? frontHero : this.players[cidx].heros[ohidx];
+                const curStatuses = stshero[status];
                 const curStatus = curStatuses.find(sts => sts.id == stsId);
                 if (curStatus == undefined) {
-                    throw new Error(`[${this.players[cspidx].name}][${(isOppo ? eFrontHero : ohidx > -1 ? this.players[cspidx].heros[this.players[cspidx].hidx] : frontHero).name}][${status}]:${curStatuses}`);
+                    throw new Error(`[${this.players[cidx].name}][${stshero.name}][${status}]:${curStatuses}`);
                 }
                 curStatus.isSelected = true;
                 if (curStatus.useCnt == 0 && !curStatus.type.includes(15)) curStatus.type.push(15);
-                this.log.push(`[${this.players[cspidx].name}][${curStatus.name}]发动`);
+                this.log.push(`[${this.players[cidx].name}][${curStatus.name}]发动`);
                 setTimeout(() => {
-                    let ncurStatus = this.players[cspidx].heros[this.players[cspidx].hidx][status].find(sts => sts.id == stsId) ?? curStatus;
+                    let ncurStatus = this.players[cidx].heros[this.players[cidx].hidx][status].find(sts => sts.id == stsId) ?? curStatus;
                     ncurStatus.isSelected = false;
                     if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(15), 1);
                     this._clearObjAttr(dataOpt);
@@ -400,7 +398,7 @@ export class GeniusInvokationGame {
             }
         }
         if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && !isDie) {
-            this.changeTurn(cspidx, isEndAtk, isQuickAction, false, 'getDamage-status', dataOpt, emit);
+            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'getDamage-status', dataOpt, emit);
         }
         if (currStatus != undefined) this.players[cidx].canAction = true;
     }

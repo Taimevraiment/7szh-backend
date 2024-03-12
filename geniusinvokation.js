@@ -174,7 +174,7 @@ export class GeniusInvokationGame {
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
             }
             await this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
-            this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, dataOpt, emit, flag); // 召唤物行动
+            this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag); // 召唤物行动
             await this.doSite(currSite, cidx, site, siteres, isEndAtk, dataOpt, emit, flag); // 场地效果发动
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
@@ -516,7 +516,7 @@ export class GeniusInvokationGame {
             }, 1000);
         });
     }
-    doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, dataOpt, emit, flag) { // 召唤物行动
+    doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 召唤物行动
         if (currSummon == undefined) return;
         const curPlayer = this.players[cidx];
         const cursummon = curPlayer.summon.find(smn => smn.id == currSummon.id);
@@ -527,7 +527,7 @@ export class GeniusInvokationGame {
                 curPlayer.summon = [...summonee];
                 if (outStatus) curPlayer.heros[curPlayer.hidx].outStatus = [...outStatus];
                 if (curPlayer.phase == Player.PHASE.ACTION) {
-                    this.changeTurn(cidx, isEndAtk, false, false, 'doSummon', dataOpt, emit);
+                    this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSummon', dataOpt, emit);
                 }
             }
         } else {

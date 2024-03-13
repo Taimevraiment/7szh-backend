@@ -1,12 +1,13 @@
 
 export class GeniusInvokationGame {
+    #currentPlayerIdx;
     constructor(id, name, password) {
         this.id = id; // 房间id
         this.name = name || `房间${id}`; // 房间名
         this.password = password; // 房间密码
         this.players = []; // 玩家数组
         this.watchers = []; // 观战玩家
-        this.cpidx = 0; // 当前回合玩家 currentPlayerIdx
+        this.#currentPlayerIdx = 0; // 当前回合玩家 currentPlayerIdx
         this.isStart = false; // 是否开始游戏
         this.phase = 0; // 阶段
         this.round = 1; // 回合数
@@ -18,6 +19,12 @@ export class GeniusInvokationGame {
         this.isDispatchingCard = false; // 是否正在进行发牌动画
         this.resetOnly = 0; // 达到2进行统一重置
         this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
+    }
+    get currentPlayerIdx() {
+        return this.#currentPlayerIdx;
+    }
+    set currentPlayerIdx(val) {
+        this.#currentPlayerIdx = (val + 2) % 2;
     }
     init(newPlayer) {
         const pidx = this.players.length + this.watchers.length;
@@ -773,13 +780,6 @@ export class GeniusInvokationGame {
                 resolve();
             }, time);
         });
-    }
-
-    get currentPlayerIdx() {
-        return this.cpidx;
-    }
-    set currentPlayerIdx(val) {
-        this.cpidx = (val + 2) % 2;
     }
 }
 

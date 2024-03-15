@@ -410,7 +410,8 @@ export class GeniusInvokationGame {
         if (currStatus != undefined) this.players[cidx].canAction = true;
     }
     heal(willHeals, dataOpt) { // 回血
-        if (willHeals == undefined || dataOpt.willHeals != undefined) return;
+        if (willHeals == undefined) return;
+        if (dataOpt.willHeals != undefined) return console.error(`ERROR:doCmd已有回血，此处回血失效！`);
         dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
         this.players.forEach((p, pi) => {
             p.heros.forEach((h, hi) => {
@@ -591,7 +592,7 @@ export class GeniusInvokationGame {
             const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
             curSlot.selected = true;
             this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
-            dataOpt.isSendActionInfo = 1000;
+            dataOpt.isSendActionInfo = 800;
             await this.doCmd(cmds, cidx, dataOpt, emit);
             if (isEndAtk) this.players[cidx].canAction = false;
             setTimeout(() => {
@@ -600,7 +601,7 @@ export class GeniusInvokationGame {
                 dataOpt.isSendActionInfo = false;
                 if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, false, false, 'doSlot', dataOpt, emit);
                 else emit(dataOpt, 'doSlot');
-            }, 800);
+            }, 500);
             resolve();
         });
     }
@@ -681,6 +682,7 @@ export class GeniusInvokationGame {
         });
     }
     doCmd(cmds, cidx, dataOpt, emit) {
+        if ((cmds?.length ?? 0) == 0) return;
         return new Promise(async resolve => {
             for (let i = 0; i < cmds.length; ++i) {
                 const { cmd, cnt, hidxs, subtype = [], card = [] } = cmds[i];

@@ -105,6 +105,7 @@ export class GeniusInvokationGame {
                 ...option,
                 players: this.players,
                 phase: this.phase,
+                isStart: this.isStart,
                 round: this.round,
                 startIdx: this.startIdx,
                 execIdx: this.players[0].isOffline ? 1 : 0,
@@ -148,7 +149,7 @@ export class GeniusInvokationGame {
             if (resetOnly || updateToServerOnly) {
                 if (++this.resetOnly < 2 || updateToServerOnly) return;
                 this.resetOnly = 0;
-                if (resetOnly) dataOpt.resetOnly = true;
+                dataOpt.resetOnly = true;
                 return emit(dataOpt, 'reset');
             }
             this.changeCard(cidxs, cidx, dataOpt, emit); // 换牌
@@ -389,15 +390,14 @@ export class GeniusInvokationGame {
                 const curStatuses = stshero[status];
                 const curStatus = curStatuses.find(sts => sts.id == stsId);
                 if (curStatus == undefined) {
-                    throw new Error(`[${this.players[cidx].name}][${stshero.name}][${status}]:${curStatuses}`);
+                    throw new Error(`[${this.players[cidx].name}][${stshero.name}][${status}]:${JSON.stringify(curStatuses)}`);
                 }
                 curStatus.isSelected = true;
-                if (curStatus.useCnt == 0 && !curStatus.type.includes(15)) curStatus.type.push(15);
                 this.log.push(`[${this.players[cidx].name}][${curStatus.name}]发动`);
                 setTimeout(() => {
                     let ncurStatus = this.players[cidx].heros[this.players[cidx].hidx][status].find(sts => sts.id == stsId) ?? curStatus;
                     ncurStatus.isSelected = false;
-                    if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(15), 1);
+                    if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(1), 1);
                     this._clearObjAttr(dataOpt);
                     if (!isSwitchAtking) dataOpt.isSwitchAtking = true;
                     emit(dataOpt, `getDamage-${status}`);
@@ -445,8 +445,7 @@ export class GeniusInvokationGame {
             if (isOppoActionEnd) timeout = 2000;
         } else if (['useSkill', 'doSlot', 'doSummon', 'doSite', 'getDamage-status', 'useCard', 'doStatus'].includes(type)) { // 如果对方已经结束则不转变
             canChange = !isOppoActionEnd && isEndAtk && !isQuickAction;
-            if (type == 'doSlot') timeout = 1300;
-            else if (['doSummon', 'doStatus'].includes(type)) timeout = 0;
+            if (['doSummon', 'doStatus', 'doSlot'].includes(type)) timeout = 0;
         }
         setTimeout(() => {
             if (canChange) {
@@ -592,7 +591,7 @@ export class GeniusInvokationGame {
             const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
             curSlot.selected = true;
             this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
-            dataOpt.isSendActionInfo = 800;
+            dataOpt.isSendActionInfo = 700;
             await this.doCmd(cmds, cidx, dataOpt, emit);
             if (isEndAtk) this.players[cidx].canAction = false;
             setTimeout(() => {

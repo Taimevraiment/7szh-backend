@@ -183,7 +183,7 @@ export class GeniusInvokationGame {
             }
             await this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
             this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag); // 召唤物行动
-            await this.doSite(currSite, cidx, site, siteres, isEndAtk, dataOpt, emit, flag); // 场地效果发动
+            await this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag); // 场地效果发动
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
                 console.info('action-end');
@@ -549,7 +549,7 @@ export class GeniusInvokationGame {
             }
         }
     }
-    doSite(currSite, cidx, site, siteres, isEndAtk, dataOpt, emit, flag) { // 场地效果发动
+    doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 场地效果发动
         if (currSite == undefined) return;
         return new Promise(async resolve => {
             if (this.phase == Player.PHASE.ACTION_END) {
@@ -566,7 +566,7 @@ export class GeniusInvokationGame {
                         this.players[cidx].site.splice(cursiteIdx, 1);
                     }
                     if (this.players[cidx].phase == Player.PHASE.ACTION) {
-                        this.changeTurn(cidx, isEndAtk, false, false, 'doSite', dataOpt, emit);
+                        this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSite', dataOpt, emit);
                     }
                 }
             } else {

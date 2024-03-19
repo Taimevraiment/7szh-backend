@@ -146,8 +146,9 @@ export class GeniusInvokationGame {
             if (edices) this.players[cidx ^ 1].dice = [...edices.val];
             if (changeFrom != undefined) dataOpt.changeFrom = changeFrom;
             if ((currSkill?.type ?? -1) > 0 || isUseSkill) dataOpt.isUseSkill = true;
-            if (resetOnly || updateToServerOnly) {
-                if (++this.resetOnly < 2 || updateToServerOnly) return;
+            if (updateToServerOnly) return;
+            if (resetOnly) {
+                if (++this.resetOnly < 2) return;
                 this.resetOnly = 0;
                 dataOpt.resetOnly = true;
                 return emit(dataOpt, 'reset');
@@ -380,7 +381,7 @@ export class GeniusInvokationGame {
         if (esummon) this.players[cidx ^ 1].summon = [...esummon];
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         let isQuickAction = false;
-        if (statusId) { // 阵营/角色状态发动
+        if (statusId) { // 阵营/角色状态发动额外攻击/回血
             dataOpt.isSendActionInfo = 2000;
             if (statusId.length > 0) {
                 const [stsId, stype, isOppo, ohidx = -1, isSwitchAtking, iqa] = statusId;

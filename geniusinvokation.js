@@ -97,7 +97,7 @@ export class GeniusInvokationGame {
         });
         console.info('start');
     }
-    async infoHandle(data, io) {
+    infoHandle(data, io) {
         let emitFlag = 'roomInfoUpdate';
         const dataOpt = { isSendActionInfo: false };
         const emit = (option = {}, flag = '', isSend = true) => {
@@ -157,18 +157,18 @@ export class GeniusInvokationGame {
             if (isEndAtk != undefined) dataOpt.isEndAtk = isEndAtk;
             this.modifyHero(hidx, inStatus, outStatus, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
             this.doDice(dices, cidx, dataOpt, emit); // 掷骰子
-            await this.startPhaseEnd(dataOpt, emit); // 开始阶段结束
+            this.startPhaseEnd(dataOpt, emit); // 开始阶段结束
             if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
-            await this.useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit); // 出牌
+            this.useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit); // 出牌
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
                 const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && !v.cmd.includes('self'));
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
                     dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit);
             }
-            if (cmds) await this.doCmd(cmds, cidx, dataOpt, emit);
+            if (cmds) this.doCmd(cmds, cidx, dataOpt, emit);
             if (elTips) dataOpt.elTips = elTips;
-            await this.doSlot(slotres, cidx, isEndAtk, dataOpt, emit);
+            this.doSlot(slotres, cidx, isEndAtk, dataOpt, emit);
             this.heal(willHeals, dataOpt); // 回血
             this.useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit); // 使用技能
             if (this.players.every(p => p.phase == Player.PHASE.NOT_BEGIN)) { // 两人都已准备
@@ -182,9 +182,9 @@ export class GeniusInvokationGame {
                 this.players[cidx].status = Player.STATUS.PLAYING;
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
             }
-            await this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
+            this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
             this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag); // 召唤物行动
-            await this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag); // 场地效果发动
+            this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag); // 场地效果发动
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
                 console.info('action-end');
@@ -285,51 +285,45 @@ export class GeniusInvokationGame {
         if (this.phase == Player.PHASE.ACTION &&
             this.players[0].phase == Player.PHASE.ACTION_START
         ) {
-            return new Promise(async resolve => {
-                this.players.forEach(p => p.phase = Player.PHASE.ACTION);
-                if (this.round > 1) await this.dispatchCard(-1, 2, [], null, [], dataOpt, emit);
-                this.players[this.startIdx].status = Player.STATUS.PLAYING;
-                this.players.forEach(p => {
-                    if (p.pidx == this.startIdx) p.info = '';
-                    else p.info = '对方行动中....';
-                });
-                resolve();
+            this.players.forEach(p => p.phase = Player.PHASE.ACTION);
+            if (this.round > 1) this.dispatchCard(-1, 2, [], null, [], dataOpt, emit);
+            this.players[this.startIdx].status = Player.STATUS.PLAYING;
+            this.players.forEach(p => {
+                if (p.pidx == this.startIdx) p.info = '';
+                else p.info = '对方行动中....';
             });
         }
     }
     useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
         if (currCard == undefined || currCard.id <= 0) return;
-        return new Promise(async resolve => {
-            dataOpt.isSendActionInfo = 800;
-            if (reconcile) { // 调和
-                this.log.push(`[${this.players[cidx].name}]进行了调和`);
-            } else { // 出牌
-                const usedCardIds = this.players[cidx].playerInfo.usedCardIds;
-                if (!usedCardIds.includes(currCard.id)) usedCardIds.push(currCard.id);
-                if (cardres && cardres?.cmds) {
-                    await this.doCmd(cardres.cmds, cidx, dataOpt, emit);
-                }
-                if (currCard.subType.includes(8)) this.players[cidx].isUsedSubType8 = true;
-                if (currCard.type == 0 && !cardres?.isDestroy) { // 装备
-                    const tarHero = this.players[cidx].heros[hidxs[0]];
-                    if (currCard.subType.includes(0)) { // 武器
-                        tarHero.weaponSlot = { ...currCard };
-                    } else if (currCard.subType.includes(1)) { // 圣遗物
-                        tarHero.artifactSlot = { ...currCard };
-                    } else if (currCard.subType.includes(6)) { // 天赋
-                        tarHero.talentSlot = { ...currCard };
-                    }
-                }
-                if (currCard.subType.includes(7)) {
-                    this.players[cidx].canAction = false;
-                    if (currCard.type == 2 && currCard.subType.includes(6)) {
-                        this.changeTurn(cidx, true, false, false, 'useCard', dataOpt, emit);
-                    }
-                } else dataOpt.actionStart = cidx;
-                this.log.push(`[${this.players[cidx].name}]使用了[${currCard.name}]`);
+        dataOpt.isSendActionInfo = 800;
+        if (reconcile) { // 调和
+            this.log.push(`[${this.players[cidx].name}]进行了调和`);
+        } else { // 出牌
+            const usedCardIds = this.players[cidx].playerInfo.usedCardIds;
+            if (!usedCardIds.includes(currCard.id)) usedCardIds.push(currCard.id);
+            if (cardres && cardres?.cmds) {
+                this.doCmd(cardres.cmds, cidx, dataOpt, emit);
             }
-            resolve();
-        });
+            if (currCard.subType.includes(8)) this.players[cidx].isUsedSubType8 = true;
+            if (currCard.type == 0 && !cardres?.isDestroy) { // 装备
+                const tarHero = this.players[cidx].heros[hidxs[0]];
+                if (currCard.subType.includes(0)) { // 武器
+                    tarHero.weaponSlot = { ...currCard };
+                } else if (currCard.subType.includes(1)) { // 圣遗物
+                    tarHero.artifactSlot = { ...currCard };
+                } else if (currCard.subType.includes(6)) { // 天赋
+                    tarHero.talentSlot = { ...currCard };
+                }
+            }
+            if (currCard.subType.includes(7)) {
+                this.players[cidx].canAction = false;
+                if (currCard.type == 2 && currCard.subType.includes(6)) {
+                    this.changeTurn(cidx, true, false, false, 'useCard', dataOpt, emit);
+                }
+            } else dataOpt.actionStart = cidx;
+            this.log.push(`[${this.players[cidx].name}]使用了[${currCard.name}]`);
+        }
     }
     getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
         dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit
@@ -400,7 +394,7 @@ export class GeniusInvokationGame {
                     ncurStatus.isSelected = false;
                     if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(1), 1);
                     this._clearObjAttr(dataOpt);
-                    if (!isSwitchAtking) dataOpt.isSwitchAtking = true;
+                    if (isSwitchAtking) dataOpt.isSwitchAtking = true;
                     emit(dataOpt, `getDamage-${status}`);
                 }, 2000);
             }
@@ -424,15 +418,15 @@ export class GeniusInvokationGame {
             });
         });
     }
-    async useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
+    useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
         if (currSkill == undefined || currSkill.type <= 0) return;
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         this.players[cidx].tarhidx = tarhidx;
         this.players[cidx ^ 1].tarhidx = etarhidx;
         this.changeTurn(cidx, isEndAtk, false, false, 'useSkill', dataOpt, emit);
         dataOpt.isSendActionInfo = 2100;
-        await this.doCmd(skillcmds[0], cidx, dataOpt, emit);
-        await this.doCmd(skillcmds[1], cidx ^ 1, dataOpt, emit);
+        this.doCmd(skillcmds[0], cidx, dataOpt, emit);
+        this.doCmd(skillcmds[1], cidx ^ 1, dataOpt, emit);
         this.log.push(`[${this.players[cidx].name}][${frontHero.name}]使用了[${SKILL_TYPE[currSkill.type]}][${currSkill.name}]`);
     }
     changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, type, dataOpt, emit) {// 转变回合人
@@ -501,28 +495,25 @@ export class GeniusInvokationGame {
     }
     doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit) { // 角色状态发动
         if (currStatus == undefined || statuscmd == undefined) return;
-        return new Promise(async resolve => {
-            const [cmd, type] = statuscmd;
-            const status = ['inStatus', 'outStatus'][type];
-            const curStatusIdx = this.players[cidx].heros[hidx][status].findIndex(sts => sts.id == currStatus.id);
-            this.players[cidx].heros[hidx][status][curStatusIdx] = currStatus;
-            const curStatus = this.players[cidx].heros[hidx][status][curStatusIdx];
-            curStatus.isSelected = true;
-            if (curStatus.useCnt == 0 && !curStatus.type.includes(15)) curStatus.type.push(15);
-            const emitFlag = `do${['In', 'Out'][type]}Status-`;
-            emit(dataOpt, `${emitFlag}start`);
-            await this.doCmd(cmd, cidx, dataOpt, emit);
-            this.log.push(`[${this.players[cidx].name}][${curStatus.name}]发动`);
-            dataOpt.isSendActionInfo = 1000;
-            resolve();
-            setTimeout(() => {
-                curStatus.isSelected = false;
-                if (curStatus.useCnt == 0 && curStatus.type.indexOf(15) > -1) curStatus.type.splice(curStatus.type.indexOf(15), 1);
-                dataOpt.isSendActionInfo = false;
-                emit(dataOpt, `${emitFlag}end`);
-                if (curStatus.type.includes(13)) this.changeTurn(cidx, isEndAtk, false, false, 'doStatus', dataOpt, emit);
-            }, 1000);
-        });
+        const [cmd, type] = statuscmd;
+        const status = ['inStatus', 'outStatus'][type];
+        const curStatusIdx = this.players[cidx].heros[hidx][status].findIndex(sts => sts.id == currStatus.id);
+        this.players[cidx].heros[hidx][status][curStatusIdx] = currStatus;
+        const curStatus = this.players[cidx].heros[hidx][status][curStatusIdx];
+        curStatus.isSelected = true;
+        if (curStatus.useCnt == 0 && !curStatus.type.includes(15)) curStatus.type.push(15);
+        const emitFlag = `do${['In', 'Out'][type]}Status-`;
+        emit(dataOpt, `${emitFlag}start`);
+        this.doCmd(cmd, cidx, dataOpt, emit);
+        this.log.push(`[${this.players[cidx].name}][${curStatus.name}]发动`);
+        dataOpt.isSendActionInfo = 1000;
+        setTimeout(() => {
+            curStatus.isSelected = false;
+            if (curStatus.useCnt == 0 && curStatus.type.indexOf(15) > -1) curStatus.type.splice(curStatus.type.indexOf(15), 1);
+            dataOpt.isSendActionInfo = false;
+            emit(dataOpt, `${emitFlag}end`);
+            if (curStatus.type.includes(13)) this.changeTurn(cidx, isEndAtk, false, false, 'doStatus', dataOpt, emit);
+        }, 1000);
     }
     doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 召唤物行动
         if (currSummon == undefined) return;
@@ -552,58 +543,52 @@ export class GeniusInvokationGame {
     }
     doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 场地效果发动
         if (currSite == undefined) return;
-        return new Promise(async resolve => {
-            if (this.phase == Player.PHASE.ACTION_END) {
-                this.players[cidx].status = Player.STATUS.PLAYING;
-                this.players[cidx ^ 1].status = Player.STATUS.WAITING;
-            }
-            const cursiteIdx = this.players[cidx].site.findIndex(st => st.sid == currSite.sid);
-            const cursite = this.players[cidx].site[cursiteIdx];
-            const step = Number(flag.slice(7, 8));
-            if (site != undefined) {
-                if (step == 3) cursite.isSelected = false; // 边框变暗
-                else if (step == 4) { // 更新site数据
-                    if (siteres?.isDestroy) {
-                        this.players[cidx].site.splice(cursiteIdx, 1);
-                    }
-                    if (this.players[cidx].phase == Player.PHASE.ACTION) {
-                        this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSite', dataOpt, emit);
-                    }
+        if (this.phase == Player.PHASE.ACTION_END) {
+            this.players[cidx].status = Player.STATUS.PLAYING;
+            this.players[cidx ^ 1].status = Player.STATUS.WAITING;
+        }
+        const cursiteIdx = this.players[cidx].site.findIndex(st => st.sid == currSite.sid);
+        const cursite = this.players[cidx].site[cursiteIdx];
+        const step = Number(flag.slice(7, 8));
+        if (site != undefined) {
+            if (step == 3) cursite.isSelected = false; // 边框变暗
+            else if (step == 4) { // 更新site数据
+                if (siteres?.isDestroy) {
+                    this.players[cidx].site.splice(cursiteIdx, 1);
                 }
-            } else {
-                if (step == 1) { // 边框变亮
-                    cursite.isSelected = true;
-                } else if (step == 2) { // 数量、效果变化
-                    if (siteres?.cmds) {
-                        await this.doCmd(siteres.cmds, cidx, dataOpt, emit);
-                    }
-                    cursite.cnt = currSite.cnt;
-                    cursite.perCnt = currSite.perCnt;
+                if (this.players[cidx].phase == Player.PHASE.ACTION) {
+                    this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSite', dataOpt, emit);
                 }
             }
-            resolve();
-        });
+        } else {
+            if (step == 1) { // 边框变亮
+                cursite.isSelected = true;
+            } else if (step == 2) { // 数量、效果变化
+                if (siteres?.cmds) {
+                    this.doCmd(siteres.cmds, cidx, dataOpt, emit);
+                }
+                cursite.cnt = currSite.cnt;
+                cursite.perCnt = currSite.perCnt;
+            }
+        }
     }
     doSlot(slotres, cidx, isEndAtk, dataOpt, emit) { // 装备效果发动
         if (slotres == undefined) return;
-        return new Promise(async resolve => {
-            const { cmds, slotIds: [hidx, slot] } = slotres;
-            const subtypeList = ['weaponSlot', 'artifactSlot', '', '', '', '', 'talentSlot'];
-            const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
-            curSlot.selected = true;
-            this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
-            dataOpt.isSendActionInfo = 700;
-            await this.doCmd(cmds, cidx, dataOpt, emit);
-            if (isEndAtk) this.players[cidx].canAction = false;
-            setTimeout(() => {
-                this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
-                delete dataOpt.willHeals;
-                dataOpt.isSendActionInfo = false;
-                if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, false, false, 'doSlot', dataOpt, emit);
-                else emit(dataOpt, 'doSlot');
-            }, 500);
-            resolve();
-        });
+        const { cmds, slotIds: [hidx, slot] } = slotres;
+        const subtypeList = ['weaponSlot', 'artifactSlot', '', '', '', '', 'talentSlot'];
+        const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
+        curSlot.selected = true;
+        this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
+        dataOpt.isSendActionInfo = 700;
+        this.doCmd(cmds, cidx, dataOpt, emit);
+        if (isEndAtk) this.players[cidx].canAction = false;
+        setTimeout(() => {
+            this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
+            delete dataOpt.willHeals;
+            dataOpt.isSendActionInfo = false;
+            if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, false, false, 'doSlot', dataOpt, emit);
+            else emit(dataOpt, 'doSlot');
+        }, 500);
     }
     endPhaseEnd() { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
@@ -632,109 +617,117 @@ export class GeniusInvokationGame {
         dataOpt.changeTo = cidx;
         dataOpt.changeFrom = ohidx;
     }
-    async dispatchCard(playerIdx, cnt, subtype, gcard, hidxs, dataOpt, emit) {
+    dispatchCard(playerIdx, cnt, subtype, gcard, hidxs, dataOpt, emit) {
         const exclude = hidxs ?? [];
         if (typeof subtype == 'number') subtype = [subtype];
         if (gcard?.length == undefined) gcard = [gcard];
-        return new Promise(resolve => {
-            while (cnt-- > 0) {
-                this.players.forEach(p => {
-                    if (p.pidx == playerIdx || playerIdx == -1) {
-                        let card = null;
-                        if (gcard[cnt]) {
-                            card = gcard[cnt];
-                        } else if (subtype.length == 0) {
-                            if (p.pile.every(c => exclude.includes(c.id))) {
-                                resolve();
-                                return;
-                            }
-                            let cardIdx = p.pile.findIndex((c, i) => (i >= Math.random() * p.pile.length) && !exclude.includes(c.id));
-                            if (cardIdx > -1) card = p.pile.splice(cardIdx, 1)[0];
-                        } else {
-                            if (p.pile.every(c => c.subType.every(st => !subtype.includes(st)))) {
-                                resolve();
-                                return;
-                            }
-                            while (card == null) {
-                                const cardIdx = p.pile.findIndex((c, i) => {
-                                    return (i >= Math.random() * p.pile.length) &&
-                                        c.subType.some(st => subtype.includes(st)) &&
-                                        !exclude.includes(c.id);
-                                });
-                                if (cardIdx > -1) card = p.pile.splice(cardIdx, 1)[0];
-                            }
+        while (cnt-- > 0) {
+            this.players.forEach(p => {
+                if (p.pidx == playerIdx || playerIdx == -1) {
+                    let card = null;
+                    if (gcard[cnt]) { // 摸指定卡
+                        card = gcard[cnt];
+                    } else if (subtype.length == 0) {
+                        if (p.pile.every(c => exclude.includes(c.id))) {
+                            return;
                         }
-                        if (card) p.willGetCard.push(card);
+                        const cardIdx = p.pile.findIndex(c => !exclude.includes(c.id));
+                        if (cardIdx > -1) card = p.pile.splice(cardIdx, 1)[0];
+                    } else { // 指定副类型
+                        if (p.pile.every(c => c.subType.every(st => !subtype.includes(st)))) {
+                            return;
+                        }
+                        while (card == null) {
+                            const cardIdx = p.pile.findIndex(c => {
+                                return c.subType.some(st => subtype.includes(st)) && !exclude.includes(c.id);
+                            });
+                            if (cardIdx > -1) card = p.pile.splice(cardIdx, 1)[0];
+                        }
                     }
-                });
-            }
-            setTimeout(() => {
-                this.players.forEach(p => {
-                    while (p.willGetCard.length > 0 && p.handCards.length < 10) {
-                        p.handCards.push(p.willGetCard.shift());
-                    }
-                    p.willGetCard = [];
-                });
-                this._clearObjAttr(dataOpt);
-                emit(dataOpt, 'dispatchCard');
-            }, 1500);
-            resolve();
-        });
+                    if (card) p.willGetCard.push(card);
+                }
+            });
+        }
+        setTimeout(() => {
+            this.players.forEach(p => {
+                while (p.willGetCard.length > 0 && p.handCards.length < 10) {
+                    p.handCards.push(p.willGetCard.shift());
+                }
+                p.willGetCard = [];
+            });
+            this._clearObjAttr(dataOpt);
+            emit(dataOpt, 'dispatchCard');
+        }, 1500);
     }
     doCmd(cmds, cidx, dataOpt, emit) {
         if ((cmds?.length ?? 0) == 0) return;
-        return new Promise(async resolve => {
-            for (let i = 0; i < cmds.length; ++i) {
-                const { cmd, cnt, hidxs, subtype = [], card = [] } = cmds[i];
-                if (cmd.startsWith('getCard')) {
-                    await this.dispatchCard((cidx + (cmd == 'getCard' ? 0 : 1)) % 2, cnt, subtype, card, hidxs, dataOpt, emit);
-                } else if (cmd == 'heal') {
-                    if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
-                    this.players[cidx].heros.forEach((h, hi) => {
-                        const heal = Math.min(cnt, h.maxhp - h.hp);
-                        if (h.hp > 0 && heal >= 0 && (hidxs?.includes(hi) || hidxs == undefined && h.isFront)) {
-                            h.hp += heal;
-                            dataOpt.willHeals[hi + (cidx ^ 1) * 3] = heal;
+        for (let i = 0; i < cmds.length; ++i) {
+            const { cmd, cnt, hidxs, subtype = [], card = [], element = 0 } = cmds[i];
+            if (cmd.startsWith('getCard')) {
+                this.dispatchCard(cidx ^ (cmd == 'getCard' ? 0 : 1), cnt, subtype, card, hidxs, dataOpt, emit);
+            } else if (cmd == 'heal') {
+                if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
+                this.players[cidx].heros.forEach((h, hi) => {
+                    const heal = Math.min(cnt, h.maxhp - h.hp);
+                    if (h.hp > 0 && heal >= 0 && (hidxs?.includes(hi) || hidxs == undefined && h.isFront)) {
+                        h.hp += heal;
+                        dataOpt.willHeals[hi + (cidx ^ 1) * 3] = heal;
+                    }
+                });
+            } else if (cmd.startsWith('switch-')) {
+                let sdir = 0;
+                if (cmd.startsWith('switch-before')) sdir = -1;
+                else if (cmd.startsWith('switch-after')) sdir = 1;
+                const pidx = cmd.endsWith('self') ? cidx : (cidx ^ 1);
+                setTimeout(() => {
+                    const heros = this.players[pidx].heros;
+                    const hLen = heros.filter(h => h.hp > 0).length;
+                    let nhidx = -1;
+                    if (sdir == 0) {
+                        nhidx = hidxs[0];
+                        const livehidxs = heros.map((h, hi) => ({ hi, hp: h.hp })).filter(v => v.hp > 0).map(v => v.hi);
+                        if (heros[nhidx].hp <= 0) {
+                            const [[nnhidx]] = livehidxs.map(v => [v, Math.abs(v - nhidx)])
+                                .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+                            nhidx = nnhidx;
                         }
-                    });
-                } else if (cmd.startsWith('switch-')) {
-                    let sdir = 0;
-                    if (cmd.startsWith('switch-before')) sdir = -1;
-                    else if (cmd.startsWith('switch-after')) sdir = 1;
-                    const pidx = cmd.endsWith('self') ? cidx : (cidx ^ 1);
-                    setTimeout(() => {
-                        const heros = this.players[pidx].heros;
-                        const hLen = heros.filter(h => h.hp > 0).length;
-                        let nhidx = -1;
-                        if (sdir == 0) {
-                            nhidx = hidxs[0];
-                            const livehidxs = heros.map((h, hi) => ({ hi, hp: h.hp })).filter(v => v.hp > 0).map(v => v.hi);
-                            if (heros[nhidx].hp <= 0) {
-                                const [[nnhidx]] = livehidxs.map(v => [v, Math.abs(v - nhidx)])
-                                    .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-                                nhidx = nnhidx;
-                            }
-                        } else {
-                            nhidx = (heros.findIndex(h => h.isFront) + sdir + hLen) % hLen;
-                            while (heros[nhidx].hp <= 0) nhidx = (nhidx + sdir + hLen) % hLen;
-                        }
-                        this._clearObjAttr(dataOpt, ['switchToSelf']);
-                        this.changeHero(pidx, nhidx, dataOpt);
-                        dataOpt.isSendActionInfo = false;
-                        emit(dataOpt, 'doCmd--' + cmd);
-                    }, cnt ?? 100);
-                } else if (cmd == 'revive') {
-                    this.players[cidx].heros.forEach((h, hi) => {
-                        if (hidxs == undefined && h.isFront || hidxs?.includes(hi)) {
-                            h.hp = cnt;
-                            if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
-                            dataOpt.willHeals[hi + (cidx ^ 1) * 3] = cnt;
-                        }
-                    });
+                    } else {
+                        nhidx = (heros.findIndex(h => h.isFront) + sdir + hLen) % hLen;
+                        while (heros[nhidx].hp <= 0) nhidx = (nhidx + sdir + hLen) % hLen;
+                    }
+                    this._clearObjAttr(dataOpt, ['switchToSelf']);
+                    this.changeHero(pidx, nhidx, dataOpt);
+                    dataOpt.isSendActionInfo = false;
+                    emit(dataOpt, 'doCmd--' + cmd);
+                }, cnt ?? 100);
+            } else if (cmd == 'revive') {
+                this.players[cidx].heros.forEach((h, hi) => {
+                    if (hidxs == undefined && h.isFront || hidxs?.includes(hi)) {
+                        h.hp = cnt;
+                        if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
+                        dataOpt.willHeals[hi + (cidx ^ 1) * 3] = cnt;
+                    }
+                });
+            } else if (cmd == 'addCard') {
+                const scope = hidxs[0] ?? 0;
+                const pileLen = this.players[cidx].pile.length;
+                let restCnt = cnt;
+                if (element == 0) { // 随机
+                    while (restCnt-- > 0) {
+                        let pos = (pileLen + Math.floor(Math.random() * (scope || pileLen))) % pileLen;
+                        if (scope < 0) ++pos;
+                        this.players[cidx].pile.splice(pos, 0, card.shift());
+                    }
+                } else { // 均匀
+                    const step = Math.floor((scope || pileLen) / (cnt + 1));
+                    if (scope < 0) ++step;
+                    while (restCnt-- > 0) {
+                        let pos = (pileLen + step * (cnt - restCnt)) % pileLen;
+                        this.players[cidx].pile.splice(pos, 0, card.shift());
+                    }
                 }
             }
-            resolve();
-        });
+        }
     }
     isWin(dataOpt, emit) {
         let winnerIdx = -1;

@@ -373,15 +373,14 @@ export class GeniusInvokationGame {
         });
         dataOpt.willDamage = willDamage;
         if (esummon) this.players[cidx ^ 1].summon = [...esummon];
-        const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         let isQuickAction = false;
         if (statusId) { // 阵营/角色状态发动额外攻击/回血
             dataOpt.isSendActionInfo = 2000;
             if (statusId.length > 0) {
-                const [stsId, stype, isOppo, ohidx = -1, isSwitchAtking, iqa] = statusId;
+                const [stsId, stype, ohidx = -1, isSwitchAtking, iqa] = statusId;
                 isQuickAction = iqa;
                 const status = ['inStatus', 'outStatus'][stype];
-                const stshero = ohidx == -1 || stype == 1 ? frontHero : this.players[cidx].heros[ohidx];
+                const stshero = ohidx == -1 || stype == 1 ? this.players[cidx].heros[this.players[cidx].hidx] : this.players[cidx].heros[ohidx];
                 const curStatuses = stshero[status];
                 const curStatus = curStatuses.find(sts => sts.id == stsId);
                 if (curStatus == undefined) {
@@ -481,7 +480,7 @@ export class GeniusInvokationGame {
             this.players[this.currentPlayerIdx].status = Player.STATUS.PLAYING;
             dataOpt.actionStart = this.currentPlayerIdx;
             dataOpt.isSendActionInfo = false;
-            emit(dataOpt, 'endPhase-hasAddAtk');
+            emit(dataOpt, 'endPhase-hasStatusAtk');
         }, !isEndAtk ? 2100 : 100);
         const isEndPhase = this.players.every(p => p.phase == Player.PHASE.ACTION_END);
         this.players.forEach(p => {

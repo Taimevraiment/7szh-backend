@@ -380,7 +380,8 @@ export class GeniusInvokationGame {
                 const [stsId, stype, ohidx = -1, isSwitchAtking, iqa] = statusId;
                 isQuickAction = iqa;
                 const status = ['inStatus', 'outStatus'][stype];
-                const stshero = ohidx == -1 || stype == 1 ? this.players[cidx].heros[this.players[cidx].hidx] : this.players[cidx].heros[ohidx];
+                const stsidx = ohidx == -1 || stype == -1 ? this.players[cidx].hidx : ohidx;
+                const stshero = this.players[cidx].heros[stsidx];
                 const curStatuses = stshero[status];
                 const curStatus = curStatuses.find(sts => sts.id == stsId);
                 if (curStatus == undefined) {
@@ -389,7 +390,7 @@ export class GeniusInvokationGame {
                 curStatus.isSelected = true;
                 this.log.push(`[${this.players[cidx].name}][${curStatus.name}]发动`);
                 setTimeout(() => {
-                    let ncurStatus = this.players[cidx].heros[this.players[cidx].hidx][status].find(sts => sts.id == stsId) ?? curStatus;
+                    let ncurStatus = this.players[cidx].heros[stsidx][status].find(sts => sts.id == stsId) ?? curStatus;
                     ncurStatus.isSelected = false;
                     if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(1), 1);
                     this._clearObjAttr(dataOpt);

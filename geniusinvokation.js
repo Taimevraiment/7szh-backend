@@ -77,6 +77,12 @@ export class GeniusInvokationGame {
         this.phase = Player.PHASE.CHANGE_CARD;
         this.players.forEach(p => {
             p.phase = this.phase;
+            p.site = [];
+            p.summon = [];
+            p.dice = [];
+            p.diceSelect = [];
+            p.status = Player.STATUS.WAITING;
+            p.isUsedSubType8 = false;
             p.playerInfo.weaponTypeCnt = new Set(p.pile.filter(c => c.subType.includes(0))).size;
             p.playerInfo.weaponCnt = p.pile.filter(c => c.subType.includes(0)).length;
             p.playerInfo.artifactTypeCnt = new Set(p.pile.filter(c => c.subType.includes(1))).size;
@@ -119,7 +125,7 @@ export class GeniusInvokationGame {
         }
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
-                handCards, currSkill, endPhase, summonee, currSummon, currSite, site,
+                handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup,
                 willDamage, willAttachs, dmgElements, inStatus, outStatus, esummon, cardres, siteres,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
@@ -134,6 +140,7 @@ export class GeniusInvokationGame {
             }
             const cidx = cpidx ?? this.currentPlayerIdx;
             dataOpt.cidx = cidx;
+            if (giveup) return this.giveup(cidx, dataOpt, emit);
             if (phase != undefined) this.players[cidx].phase = phase;
             if (roundPhase != undefined) this.phase = roundPhase;
             this.setDeck(did, cidx, cards); // 装配出站卡组
@@ -735,20 +742,27 @@ export class GeniusInvokationGame {
             if (p.heros.every(h => h.hp <= 0)) winnerIdx = i ^ 1;
         });
         if (winnerIdx > -1) {
-            setTimeout(() => {
-                this.players.forEach((p, i) => {
-                    p.info = '';
-                    p.phase = 0;
-                    if (i != winnerIdx) {
-                        p.heros.forEach(h => h.isFront = false);
-                    }
-                });
-                this.isStart = false;
-                this.phase = 0;
-                emit(dataOpt, 'game-end');
-            }, 2500);
+            setTimeout(() => this.gameEnd(winnerIdx, dataOpt, emit), 2500);
         }
         return winnerIdx;
+    }
+    giveup(cidx, dataOpt, emit) {
+        dataOpt.winnerIdx = cidx ^ 1;
+        emit(dataOpt, 'giveup');
+        setTimeout(() => this.gameEnd(cidx ^ 1, dataOpt, emit), 100);
+    }
+    gameEnd(winnerIdx, dataOpt, emit) {
+        this.players.forEach((p, i) => {
+            p.info = '';
+            p.phase = Player.PHASE.NOT_READY;
+            p.status = Player.STATUS.WAITING;
+            if (i != winnerIdx) {
+                p.heros.forEach(h => h.isFront = false);
+            }
+        });
+        this.isStart = false;
+        this.phase = 0;
+        emit(dataOpt, 'game-end');
     }
     _logHerosInfo() {
         for (let i = 0; i < 2; ++i) {

@@ -202,9 +202,13 @@ io.on('connection', socket => {
         if (!me) return console.error(`ERROR:sendToServer:未找到玩家-pid:${pid}`);
         const room = getRoom(me.rid);
         if (!room) return console.error(`ERROR:sendToServer:未找到房间-rid:${me.rid}`);
-        let isStart = room.isStart;
-        await room.infoHandle(data, io);
-        if (isStart != room.isStart) emitPlayerAndRoomList();
+        try {
+            let isStart = room.isStart;
+            room.infoHandle(data, io);
+            if (isStart != room.isStart) emitPlayerAndRoomList();
+        } catch (error) {
+            io.to(`7szh-${room.id}`).emit('error', { error });
+        }
     });
 
 

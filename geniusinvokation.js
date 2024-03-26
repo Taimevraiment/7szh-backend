@@ -43,6 +43,7 @@ export class GeniusInvokationGame {
             phase: Player.PHASE.NOT_READY,
             info: '', // 右上角提示信息
             willGetCard: [],
+            willAddCard: [],
             hidx: -1,
             did: newPlayer.did ?? -1,
             canAction: false,
@@ -175,7 +176,7 @@ export class GeniusInvokationGame {
             }
             if (cmds) this.doCmd(cmds, cidx, dataOpt, emit);
             if (elTips) dataOpt.elTips = elTips;
-            this.doSlot(slotres, cidx, isEndAtk, dataOpt, emit);
+            this.doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit);
             this.heal(willHeals, dataOpt); // 回血
             this.useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit); // 使用技能
             if (this.players.every(p => p.phase == Player.PHASE.NOT_BEGIN)) { // 两人都已准备
@@ -579,7 +580,7 @@ export class GeniusInvokationGame {
             }
         }
     }
-    doSlot(slotres, cidx, isEndAtk, dataOpt, emit) { // 装备效果发动
+    doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
         if (slotres == undefined) return;
         const { cmds, slotIds: [hidx, slot] } = slotres;
         const subtypeList = ['weaponSlot', 'artifactSlot', '', '', '', '', 'talentSlot'];
@@ -593,7 +594,7 @@ export class GeniusInvokationGame {
             this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
             delete dataOpt.willHeals;
             dataOpt.isSendActionInfo = false;
-            if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, false, false, 'doSlot', dataOpt, emit);
+            if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
             else emit(dataOpt, 'doSlot');
         }, 500);
     }

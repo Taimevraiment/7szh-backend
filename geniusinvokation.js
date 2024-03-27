@@ -490,7 +490,7 @@ export class GeniusInvokationGame {
             dataOpt.actionStart = this.currentPlayerIdx;
             dataOpt.isSendActionInfo = false;
             emit(dataOpt, 'endPhase-hasStatusAtk');
-        }, !isEndAtk ? 2100 : 100);
+        }, !isEndAtk ? 2100 : 200);
         const isEndPhase = this.players.every(p => p.phase == Player.PHASE.ACTION_END);
         this.players.forEach(p => {
             if (isEndPhase) p.info = '结束阶段...';
@@ -717,23 +717,29 @@ export class GeniusInvokationGame {
                     }
                 });
             } else if (cmd == 'addCard') {
-                const scope = hidxs[0] ?? 0;
-                const pileLen = this.players[cidx].pile.length;
-                let restCnt = cnt;
-                if (element == 0) { // 随机
-                    while (restCnt-- > 0) {
-                        let pos = (pileLen + Math.floor(Math.random() * (scope || pileLen))) % pileLen;
-                        if (scope < 0) ++pos;
-                        this.players[cidx].pile.splice(pos, 0, card.shift());
+                this.players[cidx].willAddCard = [...card];
+                setTimeout(() => {
+                    this.players[cidx].willAddCard = [];
+                    const scope = hidxs[0] ?? 0;
+                    const pileLen = this.players[cidx].pile.length;
+                    let restCnt = cnt;
+                    if (element == 0) { // 随机
+                        while (restCnt-- > 0) {
+                            let pos = (pileLen + Math.floor(Math.random() * (scope || pileLen))) % pileLen;
+                            if (scope < 0) ++pos;
+                            this.players[cidx].pile.splice(pos, 0, card.shift());
+                        }
+                    } else { // 均匀
+                        const step = Math.floor((scope || pileLen) / (cnt + 1));
+                        if (scope < 0) ++step;
+                        while (restCnt-- > 0) {
+                            let pos = (pileLen + step * (cnt - restCnt)) % pileLen;
+                            this.players[cidx].pile.splice(pos, 0, card.shift());
+                        }
                     }
-                } else { // 均匀
-                    const step = Math.floor((scope || pileLen) / (cnt + 1));
-                    if (scope < 0) ++step;
-                    while (restCnt-- > 0) {
-                        let pos = (pileLen + step * (cnt - restCnt)) % pileLen;
-                        this.players[cidx].pile.splice(pos, 0, card.shift());
-                    }
-                }
+                    this._clearObjAttr(dataOpt);
+                    emit(dataOpt, 'doCmd--' + cmd);
+                }, 850);
             }
         }
     }

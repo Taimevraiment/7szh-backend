@@ -1,7 +1,7 @@
 
 export class GeniusInvokationGame {
     #currentPlayerIdx;
-    constructor(id, name, password) {
+    constructor(id, name, password, countdown) {
         this.id = id; // 房间id
         this.name = name || `房间${id}`; // 房间名
         this.password = password; // 房间密码
@@ -16,9 +16,9 @@ export class GeniusInvokationGame {
         this.leastPlayerCnt = 2; // 最少游戏人数
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
-        this.isDispatchingCard = false; // 是否正在进行发牌动画
         this.resetOnly = 0; // 达到2进行统一重置
         this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
+        this.countdown = { limit: countdown, curr: 0, timer: null }; // 倒计时
     }
     get currentPlayerIdx() {
         return this.#currentPlayerIdx;
@@ -116,6 +116,7 @@ export class GeniusInvokationGame {
                 round: this.round,
                 startIdx: this.startIdx,
                 execIdx: this.players[0].isOffline ? 1 : 0,
+                currCountdown: this.countdown.curr,
                 log: this.log,
                 flag: dataOpt.flag ?? flag,
             };
@@ -165,7 +166,7 @@ export class GeniusInvokationGame {
             if (isEndAtk != undefined) dataOpt.isEndAtk = isEndAtk;
             this.modifyHero(hidx, inStatus, outStatus, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
             this.doDice(dices, cidx, dataOpt, emit); // 掷骰子
-            this.startPhaseEnd(dataOpt, emit); // 开始阶段结束
+            this.startPhaseEnd(); // 开始阶段结束
             if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
             this.useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit); // 出牌
@@ -197,7 +198,7 @@ export class GeniusInvokationGame {
                 this.phase = Player.PHASE.ACTION_END;
                 console.info('action-end');
             }
-            this.endPhaseEnd(); // 结束阶段结束
+            this.endPhaseEnd(dataOpt, emit); // 结束阶段结束
         }
         // console.info('emit:', emit(dataOpt, '', false));
         emit(dataOpt, 'infoHandle:' + emitFlag);
@@ -289,17 +290,23 @@ export class GeniusInvokationGame {
             }
         }
     }
-    startPhaseEnd(dataOpt, emit) { // 开始阶段结束
+    startPhaseEnd() { // 开始阶段结束
         if (this.phase == Player.PHASE.ACTION &&
             this.players[0].phase == Player.PHASE.ACTION_START
         ) {
             this.players.forEach(p => p.phase = Player.PHASE.ACTION);
-            if (this.round > 1) this.dispatchCard(-1, 2, [], null, [], dataOpt, emit);
             this.players[this.startIdx].status = Player.STATUS.PLAYING;
             this.players.forEach(p => {
                 if (p.pidx == this.startIdx) p.info = '';
                 else p.info = '对方行动中....';
             });
+            if (this.countdown.limit > 0) {
+                this.countdown.curr = this.countdown.limit;
+                const timer = setInterval(() => {
+                    --this.countdown.curr;
+                    if (this.countdown.curr <= 0) clearInterval(timer);
+                }, 1000);
+            }
         }
     }
     useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
@@ -598,19 +605,23 @@ export class GeniusInvokationGame {
             else emit(dataOpt, 'doSlot');
         }, 500);
     }
-    endPhaseEnd() { // 结束阶段结束
+    endPhaseEnd(dataOpt, emit) { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
-        ++this.round;
-        this.phase = Player.PHASE.DICE;
-        this.players.forEach(p => {
-            p.status = Player.STATUS.WAITING;
-            p.phase = Player.PHASE.DICE;
-            p.dice = [];
-            p.info = '等待对方选择......';
-            p.heros.forEach(h => {
-                if (h.hp == 0) h.hp = -1;
+        this.dispatchCard(-1, 2, [], null, [], dataOpt, emit);
+        setTimeout(() => {
+            ++this.round;
+            this.phase = Player.PHASE.DICE;
+            this.players.forEach(p => {
+                p.status = Player.STATUS.WAITING;
+                p.phase = Player.PHASE.DICE;
+                p.dice = [];
+                p.info = '等待对方选择......';
+                p.heros.forEach(h => {
+                    if (h.hp == 0) h.hp = -1;
+                });
             });
-        });
+            emit(dataOpt, 'endPhaseEnd');
+        }, 1600);
     }
     changeHero(cidx, hidx, dataOpt) {
         const ohidx = this.players[cidx].hidx;

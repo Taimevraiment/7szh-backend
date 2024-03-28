@@ -73,6 +73,7 @@ const roomInfoUpdate = roomId => {
         players: room.players,
         isStart: room.isStart,
         phase: room.phase,
+        countdown: room.countdown,
     });
 }
 
@@ -159,16 +160,16 @@ io.on('connection', socket => {
     socket.on('disconnect', () => leaveRoom('disconnect'));
     // 创建房间
     socket.on('createRoom', data => {
-        const { roomName, roomPassword } = data;
+        const { roomName, roomPassword, countdown } = data;
         const roomId = genId(roomList);
         const me = getPlayer(pid);
-        const newRoom = new GeniusInvokationGame(roomId, roomName, roomPassword);
+        const newRoom = new GeniusInvokationGame(roomId, roomName, roomPassword, countdown);
         const player = newRoom.init(me);
         playerList[getPlayerIdx(pid)] = player;
         roomList.push(newRoom);
         socket.join(`7szh-${roomId}`);
         emitPlayerAndRoomList();
-        socket.emit('enterRoom', { roomId, players: newRoom.players });
+        socket.emit('enterRoom', { roomId, players: newRoom.players, countdown: newRoom.countdown });
     });
     // 加入房间
     socket.on('enterRoom', data => {
@@ -190,7 +191,7 @@ io.on('connection', socket => {
             playerList[getPlayerIdx(pid)] = player;
         }
         emitPlayerAndRoomList();
-        socket.emit('enterRoom', { roomId, isLookon, players: room.players });
+        socket.emit('enterRoom', { roomId, isLookon, players: room.players, countdown: room.countdown });
     });
     // 退出房间
     socket.on('exitRoom', () => leaveRoom('exitRoom'));

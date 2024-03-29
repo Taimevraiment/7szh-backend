@@ -166,7 +166,7 @@ export class GeniusInvokationGame {
             if (isEndAtk != undefined) dataOpt.isEndAtk = isEndAtk;
             this.modifyHero(hidx, inStatus, outStatus, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
             this.doDice(dices, cidx, dataOpt, emit); // 掷骰子
-            this.startPhaseEnd(); // 开始阶段结束
+            this.startPhaseEnd(dataOpt); // 开始阶段结束
             if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
             this.useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit); // 出牌
@@ -290,7 +290,7 @@ export class GeniusInvokationGame {
             }
         }
     }
-    startPhaseEnd() { // 开始阶段结束
+    startPhaseEnd(dataOpt) { // 开始阶段结束
         if (this.phase == Player.PHASE.ACTION &&
             this.players[0].phase == Player.PHASE.ACTION_START
         ) {
@@ -300,13 +300,7 @@ export class GeniusInvokationGame {
                 if (p.pidx == this.startIdx) p.info = '';
                 else p.info = '对方行动中....';
             });
-            if (this.countdown.limit > 0) {
-                this.countdown.curr = this.countdown.limit;
-                const timer = setInterval(() => {
-                    --this.countdown.curr;
-                    if (this.countdown.curr <= 0) clearInterval(timer);
-                }, 1000);
-            }
+            this.startTimer(dataOpt);
         }
     }
     useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
@@ -339,6 +333,7 @@ export class GeniusInvokationGame {
             } else dataOpt.actionStart = cidx;
             this.log.push(`[${this.players[cidx].name}]使用了[${currCard.name}]`);
         }
+        this.startTimer(dataOpt);
     }
     getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
         dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit
@@ -443,6 +438,7 @@ export class GeniusInvokationGame {
         this.doCmd(skillcmds[0], cidx, dataOpt, emit);
         this.doCmd(skillcmds[1], cidx ^ 1, dataOpt, emit);
         this.log.push(`[${this.players[cidx].name}][${frontHero.name}]使用了[${SKILL_TYPE[currSkill.type]}][${currSkill.name}]`);
+        this.startTimer(dataOpt);
     }
     changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, type, dataOpt, emit) {// 转变回合人
         const isOppoActionEnd = this.players[cidx ^ 1]?.phase >= Player.PHASE.ACTION_END;
@@ -496,6 +492,7 @@ export class GeniusInvokationGame {
             this.players[this.currentPlayerIdx].status = Player.STATUS.PLAYING;
             dataOpt.actionStart = this.currentPlayerIdx;
             dataOpt.isSendActionInfo = false;
+            this.startTimer(dataOpt);
             emit(dataOpt, 'endPhase-hasStatusAtk');
         }, !isEndAtk ? 2100 : 200);
         const isEndPhase = this.players.every(p => p.phase == Player.PHASE.ACTION_END);
@@ -780,7 +777,26 @@ export class GeniusInvokationGame {
         });
         this.isStart = false;
         this.phase = 0;
+        clearInterval(this.countdown.timer);
+        this.countdown.timer = null;
+        this.countdown.curr = 0;
         emit(dataOpt, 'game-end');
+    }
+    startTimer(dataOpt) {
+        if (this.countdown.limit <= 0) return;
+        // bug 客户端刷新就会报错
+        // if (this.countdown.timer != null) clearInterval(this.countdown.timer);
+        // this.countdown.curr = this.countdown.limit;
+        // this.countdown.timer = setInterval(() => {
+        //     --this.countdown.curr;
+        //     console.log(this.countdown.curr);
+        //     if (this.countdown.curr <= 0 || this.phase != Player.PHASE.ACTION) {
+        //         this.countdown.curr = 0;
+        //         clearInterval(this.countdown.timer);
+        //         this.countdown.timer = null;
+        //     }
+        // }, 1000);
+        dataOpt.startTimer = true;
     }
     _logHerosInfo() {
         for (let i = 0; i < 2; ++i) {

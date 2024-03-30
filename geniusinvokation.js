@@ -76,6 +76,7 @@ export class GeniusInvokationGame {
         this.currentPlayerIdx = Math.floor(Math.random() * 2);
         this.startIdx = this.currentPlayerIdx;
         this.phase = Player.PHASE.CHANGE_CARD;
+        this.round = 1;
         this.players.forEach(p => {
             p.phase = this.phase;
             p.site = [];
@@ -128,7 +129,7 @@ export class GeniusInvokationGame {
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
                 handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup,
-                willDamage, willAttachs, dmgElements, inStatus, outStatus, esummon, cardres, siteres,
+                willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
@@ -164,7 +165,7 @@ export class GeniusInvokationGame {
             }
             this.changeCard(cidxs, cidx, dataOpt, emit); // 换牌
             if (isEndAtk != undefined) dataOpt.isEndAtk = isEndAtk;
-            this.modifyHero(hidx, inStatus, outStatus, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
+            this.modifyHero(hidx, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
             this.doDice(dices, cidx, dataOpt, emit); // 掷骰子
             this.startPhaseEnd(dataOpt); // 开始阶段结束
             if (handCards != undefined) this.players[cidx].handCards = [...handCards];
@@ -233,40 +234,35 @@ export class GeniusInvokationGame {
             }, 800);
         }
     }
-    modifyHero(hidx, inStatus, outStatus, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit) { // 改变角色状态
-        if (hidx == undefined) return;
-        if (isChangeHero) {
-            dataOpt.changeTo = cidx;
-            if (this.players[cidx].phase == Player.PHASE.CHOOSE_HERO) { // 选择出战角色
-                this.players[cidx].hidx = hidx;
-                this.players[cidx].heros.forEach((h, idx) => h.isFront = idx == hidx);
-                dataOpt.isSendActionInfo = false;
-                dataOpt.chooseInitHero = true;
-                this.players[cidx].phase = Player.PHASE.DICE;
-                this.log.push(`[${this.players[cidx].name}]选择[${this.players[cidx].heros[hidx].name}]出战`);
-            } else { // 切换角色
-                const ohidx = this.players[cidx].hidx;
-                this.changeHero(cidx, hidx, dataOpt);
-                if (dieChangeBack) { // 阵亡后选择出战角色
-                    dataOpt.dieChangeBack = this.phase;
-                    this.players[cidx].heros[ohidx].inStatus = this.players[cidx].heros[ohidx].inStatus.filter(ist => ist.type.includes(12));
-                    this.players[cidx].phase -= 3;
-                    const isOppoActioning = this.players[cidx ^ 1].phase == Player.PHASE.ACTION;
-                    this.players[cidx].info = isOppoActioning ? '对方行动中....' : '';
-                    const isActioning = this.players[cidx].phase == Player.PHASE.ACTION;
-                    this.players[cidx ^ 1].info = isActioning ? '对方行动中....' : '对方结束已结束回合...';
-                    if (isOppoActioning) this.players[this.currentPlayerIdx].canAction = true;
-                }
-                this.changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, 'changeHero', dataOpt, emit);
-                dataOpt.isSendActionInfo = 1000;
-                if (this.players?.[cidx]?.heros?.[hidx] == undefined) {
-                    console.error(`ERR_INFO: cidx:${cidx},hidx:${hidx}`);
-                }
-                this.log.push(`[${this.players[cidx].name}]切换为[${this.players[cidx].heros[hidx].name}]出战${isQuickAction ? '(快速行动)' : ''}`);
+    modifyHero(hidx, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit) { // 改变角色状态
+        if (hidx == undefined || !isChangeHero) return;
+        dataOpt.changeTo = cidx;
+        if (this.players[cidx].phase == Player.PHASE.CHOOSE_HERO) { // 选择出战角色
+            this.players[cidx].hidx = hidx;
+            this.players[cidx].heros.forEach((h, idx) => h.isFront = idx == hidx);
+            dataOpt.isSendActionInfo = false;
+            dataOpt.chooseInitHero = true;
+            this.players[cidx].phase = Player.PHASE.DICE;
+            this.log.push(`[${this.players[cidx].name}]选择[${this.players[cidx].heros[hidx].name}]出战`);
+        } else { // 切换角色
+            const ohidx = this.players[cidx].hidx;
+            this.changeHero(cidx, hidx, dataOpt);
+            if (dieChangeBack) { // 阵亡后选择出战角色
+                dataOpt.dieChangeBack = this.phase;
+                this.players[cidx].heros[ohidx].inStatus = this.players[cidx].heros[ohidx].inStatus.filter(ist => ist.type.includes(12));
+                this.players[cidx].phase -= 3;
+                const isOppoActioning = this.players[cidx ^ 1].phase == Player.PHASE.ACTION;
+                this.players[cidx].info = isOppoActioning ? '对方行动中....' : '';
+                const isActioning = this.players[cidx].phase == Player.PHASE.ACTION;
+                this.players[cidx ^ 1].info = isActioning ? '对方行动中....' : '对方结束已结束回合...';
+                if (isOppoActioning) this.players[this.currentPlayerIdx].canAction = true;
             }
-        } else if (inStatus || outStatus) {
-            if (inStatus) this.players[cidx].heros[hidx].inStatus = [...inStatus];
-            if (outStatus) this.players[cidx].heros[hidx].outStatus = [...outStatus];
+            this.changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, 'changeHero', dataOpt, emit);
+            dataOpt.isSendActionInfo = 1000;
+            if (this.players?.[cidx]?.heros?.[hidx] == undefined) {
+                console.error(`ERR_INFO: cidx:${cidx},hidx:${hidx}`);
+            }
+            this.log.push(`[${this.players[cidx].name}]切换为[${this.players[cidx].heros[hidx].name}]出战${isQuickAction ? '(快速行动)' : ''}`);
         }
     }
     doDice(dices, cidx, dataOpt, emit) { // 掷骰子
@@ -494,7 +490,7 @@ export class GeniusInvokationGame {
             dataOpt.isSendActionInfo = false;
             this.startTimer(dataOpt);
             emit(dataOpt, 'endPhase-hasStatusAtk');
-        }, !isEndAtk ? 2100 : 200);
+        }, !isEndAtk ? 2100 : 100);
         const isEndPhase = this.players.every(p => p.phase == Player.PHASE.ACTION_END);
         this.players.forEach(p => {
             if (isEndPhase) p.info = '结束阶段...';
@@ -784,18 +780,16 @@ export class GeniusInvokationGame {
     }
     startTimer(dataOpt) {
         if (this.countdown.limit <= 0) return;
-        // bug 客户端刷新就会报错
-        // if (this.countdown.timer != null) clearInterval(this.countdown.timer);
-        // this.countdown.curr = this.countdown.limit;
-        // this.countdown.timer = setInterval(() => {
-        //     --this.countdown.curr;
-        //     console.log(this.countdown.curr);
-        //     if (this.countdown.curr <= 0 || this.phase != Player.PHASE.ACTION) {
-        //         this.countdown.curr = 0;
-        //         clearInterval(this.countdown.timer);
-        //         this.countdown.timer = null;
-        //     }
-        // }, 1000);
+        if (this.countdown.timer != null) clearInterval(this.countdown.timer);
+        this.countdown.curr = this.countdown.limit;
+        this.countdown.timer = setInterval(() => {
+            --this.countdown.curr;
+            if (this.countdown.curr <= 0 || this.phase != Player.PHASE.ACTION) {
+                this.countdown.curr = 0;
+                clearInterval(this.countdown.timer);
+                this.countdown.timer = null;
+            }
+        }, 1000);
         dataOpt.startTimer = true;
     }
     _logHerosInfo() {

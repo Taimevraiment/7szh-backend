@@ -73,7 +73,7 @@ const roomInfoUpdate = roomId => {
         players: room.players,
         isStart: room.isStart,
         phase: room.phase,
-        countdown: room.countdown,
+        countdown: room.countdown.curr,
     });
 }
 
@@ -119,6 +119,7 @@ io.on('connection', socket => {
             }
             if (room.onlinePlayersCnt <= 0) {
                 room.players.forEach(p => p.rid = -1);
+                if (room.countdown.timer != null) clearInterval(room.countdown.timer);
                 removeById(room.id, roomList);
             } else {
                 roomInfoUpdate(room.id);

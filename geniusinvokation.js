@@ -302,6 +302,7 @@ export class GeniusInvokationGame {
     useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
         if (currCard == undefined || currCard.id <= 0) return;
         dataOpt.isSendActionInfo = 800;
+        dataOpt.actionAfter = true;
         if (reconcile) { // 调和
             this.log.push(`[${this.players[cidx].name}]进行了调和`);
         } else { // 出牌
@@ -342,7 +343,7 @@ export class GeniusInvokationGame {
             p.heros.forEach((h, i) => {
                 if (h.hp > 0) {
                     h.hp = Math.max(0, h.hp - willDamage[i + (pi ^ 1) * 3].reduce((a, b) => a + Math.max(0, b), 0));
-                    if (h.hp <= 0 && h.inStatus.every(ist => !ist.type.includes(13))) {
+                    if (h.hp <= 0 && h.inStatus.every(ist => !ist.type.includes(13)) && !h.talentSlot?.subType.includes(-4)) {
                         h.inStatus.forEach(ist => {
                             if (ist.type.indexOf(12) == -1) {
                                 ist.useCnt = 0;
@@ -426,6 +427,7 @@ export class GeniusInvokationGame {
     }
     useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
         if (currSkill == undefined || currSkill.type <= 0) return;
+        dataOpt.actionAfter = true;
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         this.players[cidx].tarhidx = tarhidx;
         this.players[cidx ^ 1].tarhidx = etarhidx;
@@ -804,7 +806,7 @@ export class GeniusInvokationGame {
         }
     }
     _clearObjAttr(dataOpt, excludes = []) {
-        const aexcludes = ['cidx'].concat(...excludes);
+        const aexcludes = ['cidx', 'actionAfter'].concat(...excludes);
         for (const k of Object.keys(dataOpt)) {
             if (aexcludes.includes(k)) continue;
             delete dataOpt[k];

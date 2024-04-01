@@ -16,8 +16,9 @@ export class GeniusInvokationGame {
         this.leastPlayerCnt = 2; // 最少游戏人数
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
+        this.playersLog = [];
         this.resetOnly = 0; // 达到2进行统一重置
-        this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
+        this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0, step: -1 }; // 任务队列
         this.countdown = { limit: countdown, curr: 0, timer: null }; // 倒计时
     }
     get currentPlayerIdx() {
@@ -109,6 +110,7 @@ export class GeniusInvokationGame {
         let emitFlag = 'roomInfoUpdate';
         const dataOpt = { isSendActionInfo: false };
         const emit = (option = {}, flag = '', isSend = true) => {
+            this.playersLog.push(JSON.stringify(this.players));
             const rdata = {
                 ...option,
                 players: this.players,
@@ -119,6 +121,7 @@ export class GeniusInvokationGame {
                 execIdx: this.players[0].isOffline ? 1 : 0,
                 currCountdown: this.countdown.curr,
                 log: this.log,
+                playersLog: this.playersLog,
                 flag: dataOpt.flag ?? flag,
             };
             console.info('server:', flag);
@@ -128,13 +131,17 @@ export class GeniusInvokationGame {
         }
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
-                handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup,
+                handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup, step,
                 willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
             emitFlag = flag ?? 'roomInfoUpdate';
             console.info('flag:', emitFlag);
+            // if (step != undefined) {
+            //     if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
+            //     this.taskQueueVal.step = step;
+            // }
             if (taskVal || emitFlag === 'roomInfoUpdate') {
                 if (taskVal) this.taskQueueVal = { ...taskVal };
                 dataOpt.taskQueueVal = this.taskQueueVal;
@@ -193,8 +200,8 @@ export class GeniusInvokationGame {
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
             }
             this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
-            this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag); // 召唤物行动
-            this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag); // 场地效果发动
+            this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step); // 召唤物行动
+            this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, step); // 场地效果发动
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
                 console.info('action-end');
@@ -302,7 +309,7 @@ export class GeniusInvokationGame {
     useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
         if (currCard == undefined || currCard.id <= 0) return;
         dataOpt.isSendActionInfo = 800;
-        dataOpt.actionAfter = true;
+        dataOpt.actionAfter = [cidx, currCard.subType.includes(7) && !reconcile ? 2 : 1];
         if (reconcile) { // 调和
             this.log.push(`[${this.players[cidx].name}]进行了调和`);
         } else { // 出牌
@@ -427,7 +434,7 @@ export class GeniusInvokationGame {
     }
     useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
         if (currSkill == undefined || currSkill.type <= 0) return;
-        dataOpt.actionAfter = true;
+        dataOpt.actionAfter = [cidx, 2];
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         this.players[cidx].tarhidx = tarhidx;
         this.players[cidx ^ 1].tarhidx = etarhidx;
@@ -521,15 +528,15 @@ export class GeniusInvokationGame {
             curStatus.isSelected = false;
             if (curStatus.useCnt == 0 && curStatus.type.indexOf(15) > -1) curStatus.type.splice(curStatus.type.indexOf(15), 1);
             dataOpt.isSendActionInfo = false;
+            this.completeTask(dataOpt);
             emit(dataOpt, `${emitFlag}end`);
             if (curStatus.type.includes(13)) this.changeTurn(cidx, isEndAtk, false, false, 'doStatus', dataOpt, emit);
         }, 1000);
     }
-    doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 召唤物行动
+    doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step) { // 召唤物行动
         if (currSummon == undefined) return;
         const curPlayer = this.players[cidx];
         const cursummon = curPlayer.summon.find(smn => smn.id == currSummon.id);
-        const step = Number(flag.slice(9, 10));
         if (summonee != undefined) {
             if (step == 3) cursummon.isSelected = false; // 边框变暗
             else if (step == 4) { // 更新summon数据
@@ -538,6 +545,7 @@ export class GeniusInvokationGame {
                 if (curPlayer.phase == Player.PHASE.ACTION) {
                     this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSummon', dataOpt, emit);
                 }
+                this.completeTask(dataOpt);
             }
         } else {
             if (step == 1) { // 边框变亮
@@ -551,7 +559,7 @@ export class GeniusInvokationGame {
             }
         }
     }
-    doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, flag) { // 场地效果发动
+    doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, step) { // 场地效果发动
         if (currSite == undefined) return;
         if (this.phase == Player.PHASE.ACTION_END) {
             this.players[cidx].status = Player.STATUS.PLAYING;
@@ -559,7 +567,6 @@ export class GeniusInvokationGame {
         }
         const cursiteIdx = this.players[cidx].site.findIndex(st => st.sid == currSite.sid);
         const cursite = this.players[cidx].site[cursiteIdx];
-        const step = Number(flag.slice(7, 8));
         if (site != undefined) {
             if (step == 3) cursite.isSelected = false; // 边框变暗
             else if (step == 4) { // 更新site数据
@@ -569,6 +576,7 @@ export class GeniusInvokationGame {
                 if (this.players[cidx].phase == Player.PHASE.ACTION) {
                     this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSite', dataOpt, emit);
                 }
+                this.completeTask(dataOpt);
             }
         } else {
             if (step == 1) { // 边框变亮
@@ -596,6 +604,7 @@ export class GeniusInvokationGame {
             this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
             delete dataOpt.willHeals;
             dataOpt.isSendActionInfo = false;
+            this.completeTask(dataOpt);
             if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
             else emit(dataOpt, 'doSlot');
         }, 500);
@@ -748,6 +757,11 @@ export class GeniusInvokationGame {
                 }, 850);
             }
         }
+    }
+    completeTask(dataOpt) {
+        // this.taskQueueVal.step = -1;
+        // this.taskQueueVal.queue.shift();
+        // dataOpt.taskQueueVal = this.taskQueueVal;
     }
     isWin(dataOpt, emit) {
         let winnerIdx = -1;

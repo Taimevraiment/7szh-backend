@@ -16,7 +16,6 @@ export class GeniusInvokationGame {
         this.leastPlayerCnt = 2; // 最少游戏人数
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
-        this.playersLog = [];
         this.resetOnly = 0; // 达到2进行统一重置
         this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0, step: -1 }; // 任务队列
         this.countdown = { limit: countdown, curr: 0, timer: null }; // 倒计时
@@ -110,7 +109,6 @@ export class GeniusInvokationGame {
         let emitFlag = 'roomInfoUpdate';
         const dataOpt = { isSendActionInfo: false };
         const emit = (option = {}, flag = '', isSend = true) => {
-            this.playersLog.push(JSON.stringify(this.players));
             const rdata = {
                 ...option,
                 players: this.players,
@@ -121,7 +119,6 @@ export class GeniusInvokationGame {
                 execIdx: this.players[0].isOffline ? 1 : 0,
                 currCountdown: this.countdown.curr,
                 log: this.log,
-                playersLog: this.playersLog,
                 flag: dataOpt.flag ?? flag,
             };
             console.info('server:', flag);
@@ -142,6 +139,7 @@ export class GeniusInvokationGame {
             //     if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
             //     this.taskQueueVal.step = step;
             // }
+            if (roundPhase == this.phase) return;
             if (taskVal || emitFlag === 'roomInfoUpdate') {
                 if (taskVal) this.taskQueueVal = { ...taskVal };
                 dataOpt.taskQueueVal = this.taskQueueVal;

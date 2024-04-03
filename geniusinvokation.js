@@ -135,13 +135,13 @@ export class GeniusInvokationGame {
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
             emitFlag = flag ?? 'roomInfoUpdate';
             console.info('flag:', emitFlag);
-            // if (step != undefined) {
-            //     if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
-            //     this.taskQueueVal.step = step;
-            // }
+            if (step != undefined) {
+                if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
+                this.taskQueueVal.step = step;
+            }
             if (roundPhase == this.phase) return;
             if (taskVal || emitFlag === 'roomInfoUpdate') {
-                if (taskVal) this.taskQueueVal = { ...taskVal };
+                if (taskVal) this.taskQueueVal = { ...taskVal, step: this.taskQueueVal.step };
                 dataOpt.taskQueueVal = this.taskQueueVal;
                 emit(dataOpt, 'update-taskQueue');
                 if (taskVal) return;
@@ -206,7 +206,6 @@ export class GeniusInvokationGame {
             }
             this.endPhaseEnd(dataOpt, emit); // 结束阶段结束
         }
-        // console.info('emit:', emit(dataOpt, '', false));
         emit(dataOpt, 'infoHandle:' + emitFlag);
     }
     setDeck(did, cidx, cards) { // 装配出站卡组
@@ -407,6 +406,7 @@ export class GeniusInvokationGame {
                     if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(1), 1);
                     this._clearObjAttr(dataOpt);
                     if (isSwitchAtking) dataOpt.isSwitchAtking = true;
+                    this.completeTask(dataOpt);
                     emit(dataOpt, `getDamage-${status}`);
                 }, 2000);
             }
@@ -757,9 +757,9 @@ export class GeniusInvokationGame {
         }
     }
     completeTask(dataOpt) {
-        // this.taskQueueVal.step = -1;
-        // this.taskQueueVal.queue.shift();
-        // dataOpt.taskQueueVal = this.taskQueueVal;
+        this.taskQueueVal.step = -1;
+        this.taskQueueVal.queue.shift();
+        dataOpt.taskQueueVal = this.taskQueueVal;
     }
     isWin(dataOpt, emit) {
         let winnerIdx = -1;

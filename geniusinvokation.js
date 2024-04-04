@@ -17,7 +17,7 @@ export class GeniusInvokationGame {
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
         this.resetOnly = 0; // 达到2进行统一重置
-        this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0, step: -1 }; // 任务队列
+        this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
         this.countdown = { limit: countdown, curr: 0, timer: null }; // 倒计时
     }
     get currentPlayerIdx() {
@@ -135,13 +135,13 @@ export class GeniusInvokationGame {
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
             emitFlag = flag ?? 'roomInfoUpdate';
             console.info('flag:', emitFlag);
-            if (step != undefined) {
-                if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
-                this.taskQueueVal.step = step;
-            }
+            // if (step != undefined) {
+            //     if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
+            //     this.taskQueueVal.step = step;
+            // }
             if (roundPhase == this.phase) return;
             if (taskVal || emitFlag === 'roomInfoUpdate') {
-                if (taskVal) this.taskQueueVal = { ...taskVal, step: this.taskQueueVal.step };
+                if (taskVal) this.taskQueueVal = { ...taskVal };
                 dataOpt.taskQueueVal = this.taskQueueVal;
                 emit(dataOpt, 'update-taskQueue');
                 if (taskVal) return;
@@ -757,9 +757,10 @@ export class GeniusInvokationGame {
         }
     }
     completeTask(dataOpt) {
-        this.taskQueueVal.step = -1;
-        this.taskQueueVal.queue.shift();
-        dataOpt.taskQueueVal = this.taskQueueVal;
+        // this.taskQueueVal.step = -1;
+        // this.taskQueueVal.queue.shift();
+        // this.notOnlyTaskUpdate = true;
+        // dataOpt.taskQueueVal = this.taskQueueVal;
     }
     isWin(dataOpt, emit) {
         let winnerIdx = -1;

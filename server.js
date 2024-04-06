@@ -144,6 +144,7 @@ io.on('connection', socket => {
                 console.info(`[${new Date()}]:玩家[${prevname}]重新连接了...`);
                 removePlayerList.get(id)?.cancel();
                 if (player.rid > 0 && getRoomIdx(player.rid) > -1) {
+                    console.info(`[${new Date()}]:玩家[${prevname}]重新进入房间[${player.rid}]`);
                     socket.emit('continueGame', { roomId: player.rid });
                 }
             }

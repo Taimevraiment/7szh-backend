@@ -12,7 +12,7 @@ const io = new Server(httpServer, {
         origin: [
             'http://127.0.0.1:5500',
             'http://taim.site',
-            'http://7szh.taim.site',
+            'http://gi-tcg.taim.site',
             'http://localhost:5500',
         ],
         methods: ['GET', 'POST']

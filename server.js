@@ -13,11 +13,18 @@ const io = new Server(httpServer, {
             'http://127.0.0.1:5500',
             'http://taim.site',
             'http://gi-tcg.taim.site',
+            'http://7szh.taim.site',
             'http://localhost:5500',
         ],
         methods: ['GET', 'POST']
     }
 });
+
+process.on('uncaughtException', (err) => {
+    console.error(err);
+});
+
+process.on('exit', code => console.error(code));
 
 const playerList = []; // 在线玩家列表
 const roomList = []; // 创建房间列表

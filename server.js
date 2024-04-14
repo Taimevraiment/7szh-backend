@@ -20,9 +20,7 @@ const io = new Server(httpServer, {
     }
 });
 
-process.on('uncaughtException', (err) => {
-    console.error(err);
-});
+process.on('uncaughtException', err => console.error(err));
 
 process.on('exit', code => console.error(code));
 

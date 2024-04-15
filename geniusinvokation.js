@@ -700,7 +700,7 @@ export class GeniusInvokationGame {
                 if (cmd.startsWith('switch-before')) sdir = -1;
                 else if (cmd.startsWith('switch-after')) sdir = 1;
                 const pidx = cmd.endsWith('self') ? cidx : (cidx ^ 1);
-                setTimeout(() => {
+                setTimeout(async () => {
                     const heros = this.players[pidx].heros;
                     const hLen = heros.filter(h => h.hp > 0).length;
                     let nhidx = -1;
@@ -719,6 +719,7 @@ export class GeniusInvokationGame {
                     this._clearObjAttr(dataOpt, ['switchToSelf']);
                     this.changeHero(pidx, nhidx, dataOpt);
                     dataOpt.isSendActionInfo = false;
+                    // await this._wait(() => this.taskQueueVal.isExecuting); // 修复 下落斩+愚人众伏兵 的，暂时不改
                     emit(dataOpt, 'doCmd--' + cmd);
                 }, cnt ?? 100);
             } else if (cmd == 'revive') {
@@ -825,13 +826,28 @@ export class GeniusInvokationGame {
             delete dataOpt[k];
         }
     }
-    _delay(callback, time = 0) {
+    _delay(time = 0) {
+        if (time == 0) return;
         return new Promise(resolve => {
-            setTimeout(() => {
-                if (callback) callback();
-                resolve();
-            }, time);
+            setTimeout(resolve, time);
         });
+    }
+    async _wait(cdt, options = {}) {
+        const { delay = 0, freq = 200, maxtime = 8000, isImmediate = true } = options;
+        let loop = 0;
+        if (cdt() && isImmediate) return;
+        while (true) {
+            ++loop;
+            await this._delay(freq);
+            if (cdt()) {
+                await this._delay(delay);
+                break;
+            }
+            if (loop > maxtime / freq) {
+                console.error('too many loops: ' + cdt.toString());
+                break;
+            }
+        }
     }
 }
 

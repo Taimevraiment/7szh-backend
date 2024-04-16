@@ -719,7 +719,7 @@ export class GeniusInvokationGame {
                     this._clearObjAttr(dataOpt, ['switchToSelf']);
                     this.changeHero(pidx, nhidx, dataOpt);
                     dataOpt.isSendActionInfo = false;
-                    // await this._wait(() => this.taskQueueVal.isExecuting); // 修复 下落斩+愚人众伏兵 的，暂时不改
+                    // await this._wait(() => this.taskQueueVal.statusAtk == 0); // todo 修复[下落斩+愚人众伏兵]的，暂时不改
                     emit(dataOpt, 'doCmd--' + cmd);
                 }, cnt ?? 100);
             } else if (cmd == 'revive') {
@@ -833,7 +833,7 @@ export class GeniusInvokationGame {
         });
     }
     async _wait(cdt, options = {}) {
-        const { delay = 0, freq = 200, maxtime = 8000, isImmediate = true } = options;
+        const { delay = 2000, freq = 200, maxtime = 8000, isImmediate = true } = options;
         let loop = 0;
         if (cdt() && isImmediate) return;
         while (true) {

@@ -39,6 +39,7 @@ export class GeniusInvokationGame {
             summon: [], // 召唤物
             dice: [], // 骰子
             diceSelect: [], // 骰子选择数组
+            rollCnt: -1, // 投掷次数
             status: Player.STATUS.WAITING,
             phase: Player.PHASE.NOT_READY,
             info: '', // 右上角提示信息
@@ -129,7 +130,7 @@ export class GeniusInvokationGame {
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
                 handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup, step,
-                willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres,
+                willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres, rollCnt,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
@@ -159,6 +160,7 @@ export class GeniusInvokationGame {
             if (currSite == undefined && site != undefined) this.players[cidx].site = [...site];
             if (currSummon == undefined && summonee != undefined) this.players[cidx].summon = [...summonee];
             if (edices) this.players[cidx ^ 1].dice = [...edices.val];
+            if (rollCnt) this.players[cidx].rollCnt = rollCnt;
             if (changeFrom != undefined) dataOpt.changeFrom = changeFrom;
             if ((currSkill?.type ?? -1) > 0 || isUseSkill) dataOpt.isUseSkill = true;
             if (updateToServerOnly) return;

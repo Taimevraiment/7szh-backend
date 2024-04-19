@@ -702,7 +702,7 @@ export class GeniusInvokationGame {
                 if (cmd.startsWith('switch-before')) sdir = -1;
                 else if (cmd.startsWith('switch-after')) sdir = 1;
                 const pidx = cmd.endsWith('self') ? cidx : (cidx ^ 1);
-                setTimeout(async () => {
+                setTimeout(() => {
                     const heros = this.players[pidx].heros;
                     const hLen = heros.filter(h => h.hp > 0).length;
                     let nhidx = -1;
@@ -721,7 +721,6 @@ export class GeniusInvokationGame {
                     this._clearObjAttr(dataOpt, ['switchToSelf']);
                     this.changeHero(pidx, nhidx, dataOpt);
                     dataOpt.isSendActionInfo = false;
-                    // await this._wait(() => this.taskQueueVal.statusAtk == 0); // todo 修复[下落斩+愚人众伏兵]的，暂时不改
                     emit(dataOpt, 'doCmd--' + cmd);
                 }, cnt ?? 100);
             } else if (cmd == 'revive') {

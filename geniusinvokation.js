@@ -78,6 +78,7 @@ export class GeniusInvokationGame {
         this.startIdx = this.currentPlayerIdx;
         this.phase = Player.PHASE.CHANGE_CARD;
         this.round = 1;
+        this.log = [];
         this.players.forEach(p => {
             p.phase = this.phase;
             p.site = [];
@@ -129,7 +130,7 @@ export class GeniusInvokationGame {
         }
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
-                handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup, step,
+                handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup, step, isInvalid,
                 willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres, rollCnt,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
@@ -177,7 +178,7 @@ export class GeniusInvokationGame {
             this.startPhaseEnd(dataOpt); // 开始阶段结束
             if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
-            this.useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit); // 出牌
+            this.useCard(currCard, reconcile, cardres, cidx, hidxs, isInvalid, dataOpt, emit); // 出牌
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
                 const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && !v.cmd.includes('self'));
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
@@ -253,6 +254,7 @@ export class GeniusInvokationGame {
         } else { // 切换角色
             const ohidx = this.players[cidx].hidx;
             this.changeHero(cidx, hidx, dataOpt);
+            dataOpt.actionAfter = [cidx, 2];
             if (dieChangeBack) { // 阵亡后选择出战角色
                 dataOpt.dieChangeBack = this.phase;
                 this.players[cidx].heros[ohidx].inStatus = this.players[cidx].heros[ohidx].inStatus.filter(ist => ist.type.includes(12));
@@ -305,7 +307,7 @@ export class GeniusInvokationGame {
             this.startTimer(dataOpt);
         }
     }
-    useCard(currCard, reconcile, cardres, cidx, hidxs, dataOpt, emit) { // 出牌
+    useCard(currCard, reconcile, cardres, cidx, hidxs, isInvalid, dataOpt, emit) { // 出牌
         if (currCard == undefined || currCard.id <= 0) return;
         dataOpt.isSendActionInfo = 800;
         dataOpt.actionAfter = [cidx, currCard.subType.includes(7) && !reconcile ? 2 : 1];
@@ -330,7 +332,7 @@ export class GeniusInvokationGame {
             }
             if (currCard.subType.includes(7)) {
                 this.players[cidx].canAction = false;
-                if (currCard.type == 2 && currCard.subType.includes(6)) {
+                if (currCard.type == 2 && (currCard.subType.includes(6) || isInvalid)) {
                     this.changeTurn(cidx, true, false, false, 'useCard', dataOpt, emit);
                 }
             } else dataOpt.actionStart = cidx;

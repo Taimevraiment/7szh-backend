@@ -737,7 +737,7 @@ export class GeniusInvokationGame {
                 this.players[cidx].willAddCard = [...card];
                 setTimeout(() => {
                     this.players[cidx].willAddCard = [];
-                    const scope = hidxs[0] ?? 0;
+                    const scope = hidxs?.[0] ?? 0;
                     const pileLen = this.players[cidx].pile.length;
                     let restCnt = cnt;
                     if (element == 0) { // 随机

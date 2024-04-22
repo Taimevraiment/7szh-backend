@@ -106,8 +106,10 @@ io.on('connection', socket => {
         if (pid == -1) return;
         const me = getPlayer(pid);
         if (!me) return console.error(`ERROR:${eventName}:未找到玩家,me:${JSON.stringify(me)}`);
-        const log = eventName == 'exitRoom' ? `[${new Date()}]:玩家[${me.name}]离开了房间[${me.rid}]...` :
-            eventName == 'disconnect' ? `[${new Date()}]:玩家[${me.name}]断开连接了...` : '';
+        const log = `[${new Date()}]:玩家[${me.name}]` + {
+            exitRoom: `离开了房间[${me.rid}]...`,
+            disconnect: `断开连接了...`,
+        }[eventName] ?? eventName;
         console.info(log);
         if (me.rid > 0) {
             socket.leave(`7szh-${me.rid}`);
@@ -117,6 +119,7 @@ io.on('connection', socket => {
             if (pidx > -1) {
                 --room.onlinePlayersCnt;
                 if (room.isStart) me.isOffline = true;
+                if (room.players[1].id == 1) --room.onlinePlayersCnt;
             }
             if (!room.isStart || pidx == -1) {
                 me.rid = -1;
@@ -215,8 +218,24 @@ io.on('connection', socket => {
             room.infoHandle(data, io);
             if (isStart != room.isStart) emitPlayerAndRoomList();
         } catch (error) {
-            io.to(`7szh-${room.id}`).emit('error', { error });
+            io.to(`7szh-${room.id}`).emit('getServerInfo', { error });
         }
+    });
+    // 添加AI
+    socket.on('addAI', () => {
+        const me = getPlayer(pid);
+        const room = getRoom(me.rid);
+        room.init({ id: 1, name: '机器人' });
+        emitPlayerAndRoomList();
+        socket.emit('addAI', { players: room.players });
+    });
+    // 移除AI
+    socket.on('removeAI', () => {
+        const me = getPlayer(pid);
+        const room = getRoom(me.rid);
+        removeById(1, room.players);
+        roomInfoUpdate(room.id);
+        emitPlayerAndRoomList();
     });
 
 

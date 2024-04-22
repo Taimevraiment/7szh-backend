@@ -74,7 +74,7 @@ export class GeniusInvokationGame {
     }
     start() {
         this.isStart = true;
-        this.currentPlayerIdx = Math.floor(Math.random() * 2);
+        this.currentPlayerIdx = this.players[1].id == 1 ? 0 : Math.floor(Math.random() * 2);
         this.startIdx = this.currentPlayerIdx;
         this.phase = Player.PHASE.CHANGE_CARD;
         this.round = 1;
@@ -238,7 +238,7 @@ export class GeniusInvokationGame {
             setTimeout(() => {
                 player.phase = Player.PHASE.CHOOSE_HERO;
                 emit(dataOpt, 'changeCard');
-            }, 800);
+            }, player.id == 1 ? 0 : 800);
         }
     }
     modifyHero(hidx, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit) { // 改变角色状态

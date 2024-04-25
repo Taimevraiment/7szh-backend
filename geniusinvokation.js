@@ -180,7 +180,7 @@ export class GeniusInvokationGame {
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
             this.useCard(currCard, reconcile, cardres, cidx, hidxs, isInvalid, dataOpt, emit); // 出牌
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
-                const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && !v.cmd.includes('self'));
+                const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && v.cmd.isOppo);
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
                     dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit);
             }
@@ -268,7 +268,7 @@ export class GeniusInvokationGame {
             this.changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, 'changeHero', dataOpt, emit);
             dataOpt.isSendActionInfo = 1000;
             if (this.players?.[cidx]?.heros?.[hidx] == undefined) {
-                console.error(`ERR_INFO: cidx:${cidx},hidx:${hidx}`);
+                console.error(`ERROR@modifyHero: cidx:${cidx},hidx:${hidx}`);
             }
             this.log.push(`[${this.players[cidx].name}]切换为[${this.players[cidx].heros[hidx].name}]出战${isQuickAction ? '(快速行动)' : ''}`);
         }
@@ -422,7 +422,7 @@ export class GeniusInvokationGame {
     }
     heal(willHeals, dataOpt) { // 回血
         if (willHeals == undefined) return;
-        if (dataOpt.willHeals != undefined) return console.error(`ERROR:doCmd已有回血，此处回血失效！`);
+        if (dataOpt.willHeals != undefined) return console.error(`ERROR@heal:doCmd已有回血，此处回血失效！`);
         dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
         this.players.forEach((p, pi) => {
             p.heros.forEach((h, hi) => {
@@ -687,9 +687,9 @@ export class GeniusInvokationGame {
     doCmd(cmds, cidx, dataOpt, emit) {
         if ((cmds?.length ?? 0) == 0) return;
         for (let i = 0; i < cmds.length; ++i) {
-            const { cmd, cnt, hidxs, subtype = [], card = [], element = 0 } = cmds[i];
-            if (cmd.startsWith('getCard')) {
-                this.dispatchCard(cidx ^ (cmd == 'getCard' ? 0 : 1), cnt, subtype, card, hidxs, dataOpt, emit);
+            const { cmd, cnt, hidxs, subtype = [], card = [], element = 0, isOppo = false } = cmds[i];
+            if (cmd == 'getCard') {
+                this.dispatchCard(cidx ^ +isOppo, cnt, subtype, card, hidxs, dataOpt, emit);
             } else if (cmd == 'heal') {
                 if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
                 this.players[cidx].heros.forEach((h, hi) => {
@@ -701,9 +701,9 @@ export class GeniusInvokationGame {
                 });
             } else if (cmd.startsWith('switch-')) {
                 let sdir = 0;
-                if (cmd.startsWith('switch-before')) sdir = -1;
-                else if (cmd.startsWith('switch-after')) sdir = 1;
-                const pidx = cmd.endsWith('self') ? cidx : (cidx ^ 1);
+                if (cmd == 'switch-before') sdir = -1;
+                else if (cmd == 'switch-after') sdir = 1;
+                const pidx = cidx ^ +isOppo;
                 setTimeout(() => {
                     const heros = this.players[pidx].heros;
                     const hLen = heros.filter(h => h.hp > 0).length;

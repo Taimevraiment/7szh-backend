@@ -73,7 +73,7 @@ const removePlayer = pid => {
 // 更新房间信息
 const roomInfoUpdate = roomId => {
     const room = getRoom(roomId);
-    if (!room) return console.error(`ERROR:roomInfoUpdate:房间${roomId}不存在`);
+    if (!room) return console.error(`ERROR@roomInfoUpdate:房间${roomId}不存在`);
     io.to(`7szh-${room.id}`).emit('roomInfoUpdate', {
         players: room.players,
         isStart: room.isStart,
@@ -105,7 +105,7 @@ io.on('connection', socket => {
     const leaveRoom = eventName => {
         if (pid == -1) return;
         const me = getPlayer(pid);
-        if (!me) return console.error(`ERROR:${eventName}:未找到玩家,me:${JSON.stringify(me)}`);
+        if (!me) return console.error(`ERROR@leaveRoom:${eventName}:未找到玩家,me:${JSON.stringify(me)}`);
         const log = `[${new Date()}]:玩家[${me.name}]` + {
             exitRoom: `离开了房间[${me.rid}]...`,
             disconnect: `断开连接了...`,
@@ -114,7 +114,7 @@ io.on('connection', socket => {
         if (me.rid > 0) {
             socket.leave(`7szh-${me.rid}`);
             const room = getRoom(me.rid);
-            if (!room) return console.error(`ERROR:${eventName}:未找到房间,rid:${me.rid}`);
+            if (!room) return console.error(`ERROR@leaveRoom:${eventName}:未找到房间,rid:${me.rid}`);
             const pidx = getIdxById(me.id, room.players);
             if (pidx > -1) {
                 --room.onlinePlayersCnt;
@@ -210,14 +210,15 @@ io.on('connection', socket => {
     // 发送数据到服务器
     socket.on('sendToServer', async data => {
         const me = getPlayer(pid);
-        if (!me) return console.error(`ERROR:sendToServer:未找到玩家-pid:${pid}`);
+        if (!me) return console.error(`ERROR@sendToServer:未找到玩家-pid:${pid}`);
         const room = getRoom(me.rid);
-        if (!room) return console.error(`ERROR:sendToServer:未找到房间-rid:${me.rid}`);
+        if (!room) return console.error(`ERROR@sendToServer:未找到房间-rid:${me.rid}`);
         try {
             let isStart = room.isStart;
             room.infoHandle(data, io);
             if (isStart != room.isStart) emitPlayerAndRoomList();
         } catch (error) {
+            console.error(`ERROR@sendToServer:${error}`);
             io.to(`7szh-${room.id}`).emit('getServerInfo', { error });
         }
     });

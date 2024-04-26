@@ -119,7 +119,7 @@ io.on('connection', socket => {
             if (pidx > -1) {
                 --room.onlinePlayersCnt;
                 if (room.isStart) me.isOffline = true;
-                if (room.players[1].id == 1) --room.onlinePlayersCnt;
+                if (room.players?.[1]?.id == 1) --room.onlinePlayersCnt;
             }
             if (!room.isStart || pidx == -1) {
                 me.rid = -1;

@@ -756,7 +756,7 @@ export class GeniusInvokationGame {
                     }
                     this._clearObjAttr(dataOpt);
                     emit(dataOpt, 'doCmd--' + cmd);
-                }, 850);
+                }, 1250);
             }
         }
     }

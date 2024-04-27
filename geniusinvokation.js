@@ -734,24 +734,25 @@ export class GeniusInvokationGame {
                     }
                 });
             } else if (cmd == 'addCard') {
-                this.players[cidx].willAddCard = [...card];
+                const pidx = cidx ^ +isOppo;
+                this.players[pidx].willAddCard = [...card];
                 setTimeout(() => {
-                    this.players[cidx].willAddCard = [];
+                    this.players[pidx].willAddCard = [];
                     const scope = hidxs?.[0] ?? 0;
-                    const pileLen = this.players[cidx].pile.length;
+                    const pileLen = this.players[pidx].pile.length;
                     let restCnt = cnt;
                     if (element == 0) { // 随机
                         while (restCnt-- > 0) {
                             let pos = (pileLen + Math.floor(Math.random() * (scope || pileLen))) % pileLen;
                             if (scope < 0) ++pos;
-                            this.players[cidx].pile.splice(pos, 0, card.shift());
+                            this.players[pidx].pile.splice(pos, 0, card.shift());
                         }
                     } else { // 均匀
                         const step = Math.floor((scope || pileLen) / (cnt + 1));
                         if (scope < 0) ++step;
                         while (restCnt-- > 0) {
                             let pos = (pileLen + step * (cnt - restCnt)) % pileLen;
-                            this.players[cidx].pile.splice(pos, 0, card.shift());
+                            this.players[pidx].pile.splice(pos, 0, card.shift());
                         }
                     }
                     this._clearObjAttr(dataOpt);

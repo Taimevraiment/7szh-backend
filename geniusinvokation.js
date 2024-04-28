@@ -166,6 +166,8 @@ export class GeniusInvokationGame {
             if ((currSkill?.type ?? -1) > 0 || isUseSkill) dataOpt.isUseSkill = true;
             if (updateToServerOnly) return;
             if (resetOnly) {
+                this.players[cidx].playerInfo.disCardCnt = 0;
+                this.players[cidx].playerInfo.reconcileCnt = 0;
                 if (++this.resetOnly < 2) return;
                 this.resetOnly = 0;
                 dataOpt.resetOnly = true;

@@ -59,6 +59,7 @@ export class GeniusInvokationGame {
                 usedCardIds: [],
                 destroyedSite: 0,
                 oppoGetElDmgType: 0,
+                discardIds: [],
             },
             isOffline: false,
         };
@@ -615,7 +616,7 @@ export class GeniusInvokationGame {
     }
     endPhaseEnd(dataOpt, emit) { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
-        this.dispatchCard(-1, 2, [], null, [], dataOpt, emit);
+        this.dispatchCard(-1, { cnt: 2 }, dataOpt, emit);
         setTimeout(() => {
             ++this.round;
             this.phase = Player.PHASE.DICE;
@@ -644,8 +645,10 @@ export class GeniusInvokationGame {
         dataOpt.changeTo = cidx;
         dataOpt.changeFrom = ohidx;
     }
-    dispatchCard(playerIdx, cnt, subtype, gcard, hidxs, dataOpt, emit) {
-        const exclude = hidxs ?? [];
+    dispatchCard(playerIdx, event, dataOpt, emit) {
+        console.log(event);
+        const { subtype = [], card: gcard = [], hidxs: exclude = [], isAttach = false } = event;
+        let { cnt } = event;
         if (typeof subtype == 'number') subtype = [subtype];
         if (gcard?.length == undefined) gcard = [gcard];
         while (cnt-- > 0) {
@@ -653,7 +656,12 @@ export class GeniusInvokationGame {
                 if (p.pidx == playerIdx || playerIdx == -1) {
                     let card = null;
                     if (gcard[cnt]) { // 摸指定卡
-                        card = gcard[cnt];
+                        if (!isAttach) card = gcard[cnt];
+                        else {
+                            const cid = gcard[cnt].id;
+                            const cardIdx = p.pile.findIndex(c => c.id == cid);
+                            if (cardIdx > -1) card = p.pile.splice(cardIdx, 1)[0];
+                        }
                     } else if (subtype.length == 0) {
                         if (p.pile.every(c => exclude.includes(c.id))) {
                             return;
@@ -689,9 +697,9 @@ export class GeniusInvokationGame {
     doCmd(cmds, cidx, dataOpt, emit) {
         if ((cmds?.length ?? 0) == 0) return;
         for (let i = 0; i < cmds.length; ++i) {
-            const { cmd, cnt, hidxs, subtype = [], card = [], element = 0, isOppo = false } = cmds[i];
+            const { cmd, cnt, hidxs, card = [], element = 0, isOppo = false } = cmds[i];
             if (cmd == 'getCard') {
-                this.dispatchCard(cidx ^ +isOppo, cnt, subtype, card, hidxs, dataOpt, emit);
+                this.dispatchCard(cidx ^ +isOppo, cmds[i], dataOpt, emit);
             } else if (cmd == 'heal') {
                 if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
                 this.players[cidx].heros.forEach((h, hi) => {

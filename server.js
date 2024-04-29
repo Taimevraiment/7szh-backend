@@ -219,7 +219,7 @@ io.on('connection', socket => {
             if (isStart != room.isStart) emitPlayerAndRoomList();
         } catch (error) {
             console.error(`ERROR@sendToServer:${error}`);
-            io.to(`7szh-${room.id}`).emit('getServerInfo', { error });
+            io.to(`7szh-${room.id}`).emit('getServerInfo', { error: error.toString() });
         }
     });
     // 添加AI

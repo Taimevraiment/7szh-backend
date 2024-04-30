@@ -45,6 +45,7 @@ export class GeniusInvokationGame {
             info: '', // 右上角提示信息
             willGetCard: [],
             willAddCard: [],
+            willDiscard: [],
             hidx: -1,
             did: newPlayer.did ?? -1,
             canAction: false,
@@ -646,7 +647,6 @@ export class GeniusInvokationGame {
         dataOpt.changeFrom = ohidx;
     }
     dispatchCard(playerIdx, event, dataOpt, emit) {
-        console.log(event);
         const { subtype = [], card: gcard = [], hidxs: exclude = [], isAttach = false } = event;
         let { cnt } = event;
         if (typeof subtype == 'number') subtype = [subtype];
@@ -765,6 +765,21 @@ export class GeniusInvokationGame {
                             this.players[pidx].pile.splice(pos, 0, card.shift());
                         }
                     }
+                    this._clearObjAttr(dataOpt);
+                    emit(dataOpt, 'doCmd--' + cmd);
+                }, 1250);
+            } else if (cmd == 'discard') {
+                const pidx = cidx ^ +isOppo;
+                if ([0, 1].includes(element)) { // 舍弃手牌
+                    hidxs.forEach(dcidx => {
+                        this.players[pidx].willDiscard.push(this.players[pidx].handCards[dcidx]);
+                    });
+                    this.players[pidx].handCards = this.players[pidx].handCards.filter((_, dcidx) => !hidxs.includes(dcidx));
+                } else if ([2, 3].includes(element)) { // 舍弃牌库中的牌
+                    this.players[pidx].pile = this.players[pidx].pile.filter((_, dcidx) => !hidxs.includes(dcidx));
+                }
+                setTimeout(() => {
+                    this.players[pidx].willDiscard = [];
                     this._clearObjAttr(dataOpt);
                     emit(dataOpt, 'doCmd--' + cmd);
                 }, 1250);

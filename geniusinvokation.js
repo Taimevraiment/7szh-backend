@@ -45,7 +45,7 @@ export class GeniusInvokationGame {
             info: '', // 右上角提示信息
             willGetCard: [],
             willAddCard: [],
-            willDiscard: [],
+            willDiscard: [[], []],
             hidx: -1,
             did: newPlayer.did ?? -1,
             canAction: false,
@@ -772,17 +772,18 @@ export class GeniusInvokationGame {
                 const pidx = cidx ^ +isOppo;
                 if ([0, 1].includes(element)) { // 舍弃手牌
                     hidxs.forEach(dcidx => {
-                        this.players[pidx].willDiscard.push(this.players[pidx].handCards[dcidx]);
+                        this.players[pidx].willDiscard[0].push(this.players[pidx].handCards[dcidx]);
                     });
                     this.players[pidx].handCards = this.players[pidx].handCards.filter((_, dcidx) => !hidxs.includes(dcidx));
                 } else if ([2, 3].includes(element)) { // 舍弃牌库中的牌
+                    this.players[pidx].willDiscard[1].push(...this.players[pidx].pile.filter((_, dcidx) => hidxs.includes(dcidx)));
                     this.players[pidx].pile = this.players[pidx].pile.filter((_, dcidx) => !hidxs.includes(dcidx));
                 }
                 setTimeout(() => {
-                    this.players[pidx].willDiscard = [];
+                    this.players[pidx].willDiscard = [[], []];
                     this._clearObjAttr(dataOpt);
                     emit(dataOpt, 'doCmd--' + cmd);
-                }, 1250);
+                }, 1500);
             }
         }
     }

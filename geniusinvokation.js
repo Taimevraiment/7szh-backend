@@ -60,7 +60,10 @@ export class GeniusInvokationGame {
                 usedCardIds: [],
                 destroyedSite: 0,
                 oppoGetElDmgType: 0,
+                disCardCnt: 0,
+                reconcileCnt: 0,
                 discardIds: [],
+                initCardIds: [],
             },
             isOffline: false,
         };
@@ -167,6 +170,7 @@ export class GeniusInvokationGame {
             if (changeFrom != undefined) dataOpt.changeFrom = changeFrom;
             if ((currSkill?.type ?? -1) > 0 || isUseSkill) dataOpt.isUseSkill = true;
             if (updateToServerOnly) return;
+            if (cmds) this.doCmd(cmds, cidx, dataOpt, emit);
             if (resetOnly) {
                 this.players[cidx].playerInfo.disCardCnt = 0;
                 this.players[cidx].playerInfo.reconcileCnt = 0;
@@ -188,7 +192,6 @@ export class GeniusInvokationGame {
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
                     dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit);
             }
-            if (cmds) this.doCmd(cmds, cidx, dataOpt, emit);
             if (elTips) dataOpt.elTips = elTips;
             this.doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit);
             this.heal(willHeals, dataOpt); // 回血
@@ -226,19 +229,19 @@ export class GeniusInvokationGame {
         while (cidxs.length > 0) {
             const cardidx = cidxs.shift();
             const ranIdx = Math.floor(Math.random() * player.pile.length);
-            [player.handCards[cardidx], player.pile[ranIdx]] =
-                [player.pile[ranIdx], player.handCards[cardidx]];
+            [player.handCards[cardidx], player.pile[ranIdx]] = [player.pile[ranIdx], player.handCards[cardidx]];
         }
-        let log = `[${player.name}]换牌后手牌为`;
-        player.handCards.forEach(c => log += `[${c.name}]`);
-        this.log.push(log);
-        player.info = `${this.startIdx == player.pidx ? '我方' : '对方'}先手，等待对方选择......`;
         if (this.phase == Player.PHASE.ACTION) {
             setTimeout(() => {
                 this.players[cidx].phase = Player.PHASE.ACTION;
                 emit(dataOpt, 'changeCard-action');
             }, 800);
         } else {
+            let log = `[${player.name}]换牌后手牌为`;
+            player.handCards.forEach(c => log += `[${c.name}]`);
+            this.log.push(log);
+            player.info = `${this.startIdx == player.pidx ? '我方' : '对方'}先手，等待对方选择......`;
+            player.playerInfo.initCardIds = player.handCards.map(c => c.id);
             setTimeout(() => {
                 player.phase = Player.PHASE.CHOOSE_HERO;
                 emit(dataOpt, 'changeCard');
@@ -316,7 +319,7 @@ export class GeniusInvokationGame {
         dataOpt.isSendActionInfo = 800;
         dataOpt.actionAfter = [cidx, currCard.subType.includes(7) && !reconcile ? 2 : 1];
         if (reconcile) { // 调和
-            this.log.push(`[${this.players[cidx].name}]进行了调和`);
+            this.log.push(`[${this.players[cidx].name}]将[${currCard.name}]进行了调和`);
         } else { // 出牌
             const usedCardIds = this.players[cidx].playerInfo.usedCardIds;
             if (!usedCardIds.includes(currCard.id)) usedCardIds.push(currCard.id);
@@ -463,16 +466,23 @@ export class GeniusInvokationGame {
         } else if (['useSkill', 'doSlot', 'doSummon', 'doSite', 'getDamage-status', 'useCard', 'doStatus'].includes(type)) { // 如果对方已经结束则不转变
             canChange = !isOppoActionEnd && isEndAtk && !isQuickAction;
             if (['doSummon', 'doStatus', 'doSlot'].includes(type)) timeout = 0;
+        } else if (type == 'endPhase') {
+            canChange = isEndAtk;
+            timeout = 100;
         }
         setTimeout(() => {
             if (canChange) {
                 this.players[this.currentPlayerIdx].status = Player.STATUS.WAITING;
                 ++this.currentPlayerIdx;
                 this.players[this.currentPlayerIdx].status = Player.STATUS.PLAYING;
-                this.players.forEach(p => {
-                    if (p.pidx == this.currentPlayerIdx) p.info = '';
-                    else p.info = '对方行动中....';
-                });
+                if (type == 'endPhase') {
+                    this.startTimer(dataOpt);
+                } else {
+                    this.players.forEach(p => {
+                        if (p.pidx == this.currentPlayerIdx) p.info = '';
+                        else p.info = '对方行动中....';
+                    });
+                }
                 const curPlayer = this.players[this.currentPlayerIdx];
                 if (curPlayer.heros[curPlayer.hidx].inStatus.every(ist => !ist.type.includes(11)) ||
                     curPlayer.heros[curPlayer.hidx].inStatus.some(ist => ist.type.includes(14))) {
@@ -497,15 +507,18 @@ export class GeniusInvokationGame {
             this.startIdx = cidx;
         }
         this.players[this.currentPlayerIdx].canAction = false;
-        setTimeout(() => {
-            this.players[this.currentPlayerIdx].status = Player.STATUS.WAITING;
-            ++this.currentPlayerIdx;
-            this.players[this.currentPlayerIdx].status = Player.STATUS.PLAYING;
-            dataOpt.actionStart = this.currentPlayerIdx;
-            dataOpt.isSendActionInfo = false;
-            this.startTimer(dataOpt);
-            emit(dataOpt, 'endPhase-hasStatusAtk');
-        }, !isEndAtk ? 2100 : 100);
+        // if (isEndAtk) {
+        //     setTimeout(() => {
+        //         this.players[this.currentPlayerIdx].status = Player.STATUS.WAITING;
+        //         ++this.currentPlayerIdx;
+        //         this.players[this.currentPlayerIdx].status = Player.STATUS.PLAYING;
+        //         dataOpt.actionStart = this.currentPlayerIdx;
+        //         dataOpt.isSendActionInfo = false;
+        //         this.startTimer(dataOpt);
+        //         emit(dataOpt, 'endPhase-hasStatusAtk');
+        //     }, 100);
+        // }
+        this.changeTurn(cidx, isEndAtk, false, false, 'endPhase', dataOpt, emit);
         const isEndPhase = this.players.every(p => p.phase == Player.PHASE.ACTION_END);
         this.players.forEach(p => {
             if (isEndPhase) p.info = '结束阶段...';
@@ -779,7 +792,10 @@ export class GeniusInvokationGame {
                     this.players[pidx].willDiscard[1].push(...this.players[pidx].pile.filter((_, dcidx) => hidxs.includes(dcidx)));
                     this.players[pidx].pile = this.players[pidx].pile.filter((_, dcidx) => !hidxs.includes(dcidx));
                 }
+                this.log.push(`[${this.players[pidx].name}]舍弃了${this.players[pidx].willDiscard.flatMap(c => `[${c.name}]`).join('')}`);
+                dataOpt.isSendActionInfo = 1400;
                 setTimeout(() => {
+                    dataOpt.isSendActionInfo = false;
                     this.players[pidx].willDiscard = [[], []];
                     this._clearObjAttr(dataOpt);
                     emit(dataOpt, 'doCmd--' + cmd);

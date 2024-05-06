@@ -60,7 +60,7 @@ export class GeniusInvokationGame {
                 usedCardIds: [],
                 destroyedSite: 0,
                 oppoGetElDmgType: 0,
-                disCardCnt: 0,
+                discardCnt: 0,
                 reconcileCnt: 0,
                 discardIds: [],
                 initCardIds: [],
@@ -202,7 +202,6 @@ export class GeniusInvokationGame {
             if (this.players.every(p => p.phase == Player.PHASE.DICE)) { // 两人都选完出战角色
                 this.phase = Player.PHASE.DICE;
             }
-            this.endPhase(endPhase, cidx, isEndAtk, dataOpt, emit); // 结束回合
             if (this.phase == Player.PHASE.ACTION_END && (currSummon || currSite || currStatus)) { // 结束阶段召唤物、场地、状态发动
                 this.players[cidx].status = Player.STATUS.PLAYING;
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
@@ -210,6 +209,7 @@ export class GeniusInvokationGame {
             this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
             this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step); // 召唤物行动
             this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, step); // 场地效果发动
+            this.endPhase(endPhase, cidx, isEndAtk, dataOpt, emit); // 结束回合
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
                 console.info('action-end');
@@ -415,6 +415,7 @@ export class GeniusInvokationGame {
                     let ncurStatus = this.players[cidx].heros[stsidx][status].find(sts => sts.id == stsId) ?? curStatus;
                     ncurStatus.isSelected = false;
                     if (ncurStatus.useCnt == 0) ncurStatus.type.splice(ncurStatus.type.indexOf(1), 1);
+                    this.players[cidx].summon = this.players[cidx].summon.filter(smn => smn.useCnt > 0 || smn.isDestroy > 0);
                     this._clearObjAttr(dataOpt);
                     if (isSwitchAtking) dataOpt.isSwitchAtking = true;
                     this.completeTask(dataOpt);
@@ -561,7 +562,7 @@ export class GeniusInvokationGame {
             else if (step == 4) { // 更新summon数据
                 curPlayer.summon = [...summonee];
                 if (outStatus) curPlayer.heros[curPlayer.hidx].outStatus = [...outStatus];
-                if (curPlayer.phase == Player.PHASE.ACTION) {
+                if (this.phase == Player.PHASE.ACTION) {
                     this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSummon', dataOpt, emit);
                 }
                 this.completeTask(dataOpt);
@@ -624,12 +625,13 @@ export class GeniusInvokationGame {
             delete dataOpt.willHeals;
             dataOpt.isSendActionInfo = false;
             this.completeTask(dataOpt);
-            if (isEndAtk) this.changeTurn(this.currentPlayerIdx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
+            if (isEndAtk) this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
             else emit(dataOpt, 'doSlot');
         }, 500);
     }
     endPhaseEnd(dataOpt, emit) { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
+        this.currentPlayerIdx = this.startIdx;
         this.dispatchCard(-1, { cnt: 2 }, dataOpt, emit);
         setTimeout(() => {
             ++this.round;
@@ -792,7 +794,7 @@ export class GeniusInvokationGame {
                     this.players[pidx].willDiscard[1].push(...this.players[pidx].pile.filter((_, dcidx) => hidxs.includes(dcidx)));
                     this.players[pidx].pile = this.players[pidx].pile.filter((_, dcidx) => !hidxs.includes(dcidx));
                 }
-                this.log.push(`[${this.players[pidx].name}]舍弃了${this.players[pidx].willDiscard.flatMap(c => `[${c.name}]`).join('')}`);
+                this.log.push(`[${this.players[pidx].name}]舍弃了${this.players[pidx].willDiscard.map(cs => cs.map(c => `[${c.name}]`).join('')).join('')}`);
                 dataOpt.isSendActionInfo = 1400;
                 setTimeout(() => {
                     dataOpt.isSendActionInfo = false;

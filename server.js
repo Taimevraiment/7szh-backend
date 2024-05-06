@@ -208,7 +208,7 @@ io.on('connection', socket => {
     // 房间信息更新
     socket.on('roomInfoUpdate', data => roomInfoUpdate(data.roomId));
     // 发送数据到服务器
-    socket.on('sendToServer', async data => {
+    socket.on('sendToServer', data => {
         const me = getPlayer(pid);
         if (!me) return console.error(`ERROR@sendToServer:未找到玩家-pid:${pid}`);
         const room = getRoom(me.rid);

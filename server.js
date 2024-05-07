@@ -213,14 +213,14 @@ io.on('connection', socket => {
         if (!me) return console.error(`ERROR@sendToServer:未找到玩家-pid:${pid}`);
         const room = getRoom(me.rid);
         if (!room) return console.error(`ERROR@sendToServer:未找到房间-rid:${me.rid}`);
-        try {
-            let isStart = room.isStart;
-            room.infoHandle(data, io);
-            if (isStart != room.isStart) emitPlayerAndRoomList();
-        } catch (error) {
-            console.error(`ERROR@sendToServer:${error}`);
-            io.to(`7szh-${room.id}`).emit('getServerInfo', { error: error.toString() });
-        }
+        // try {
+        let isStart = room.isStart;
+        room.infoHandle(data, io);
+        if (isStart != room.isStart) emitPlayerAndRoomList();
+        // } catch (error) {
+        //     console.error(`ERROR@sendToServer:${error}`);
+        //     io.to(`7szh-${room.id}`).emit('getServerInfo', { error: error.toString() });
+        // }
     });
     // 添加AI
     socket.on('addAI', () => {

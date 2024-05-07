@@ -586,6 +586,7 @@ export class GeniusInvokationGame {
             this.players[cidx ^ 1].status = Player.STATUS.WAITING;
         }
         const cursiteIdx = this.players[cidx].site.findIndex(st => st.sid == currSite.sid);
+        if (cursiteIdx == -1) return;
         const cursite = this.players[cidx].site[cursiteIdx];
         if (site != undefined) {
             if (step == 3) cursite.isSelected = false; // 边框变暗

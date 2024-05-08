@@ -110,7 +110,7 @@ export class GeniusInvokationGame {
             p.handCards.forEach(c => log += `[${c.name}]`);
             this.log.push(log);
         });
-        console.info('start');
+        console.info(`[${this.id}]start`);
     }
     infoHandle(data, io) {
         let emitFlag = 'roomInfoUpdate';
@@ -128,7 +128,7 @@ export class GeniusInvokationGame {
                 log: this.log,
                 flag: dataOpt.flag ?? flag,
             };
-            console.info('server:', flag);
+            console.info(`[${this.id}]server:`, flag);
             if (!data) rdata.taskQueueVal = this.taskQueueVal;
             if (isSend) io.to(`7szh-${this.id}`).emit(data ? 'getServerInfo' : 'roomInfoUpdate', rdata);
             return data;
@@ -141,7 +141,7 @@ export class GeniusInvokationGame {
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
             emitFlag = flag ?? 'roomInfoUpdate';
-            console.info('flag:', emitFlag);
+            console.info(`[${this.id}]flag:`, emitFlag);
             // if (step != undefined) {
             //     if (this.taskQueueVal.step != -1 && step != this.taskQueueVal.step + 1 || this.taskQueueVal.step == -1 && step != 1) return;
             //     this.taskQueueVal.step = step;
@@ -212,7 +212,7 @@ export class GeniusInvokationGame {
             this.endPhase(endPhase, cidx, isEndAtk, dataOpt, emit); // 结束回合
             if (this.players.every(p => p.phase == Player.PHASE.ACTION_END) && this.phase == Player.PHASE.ACTION) { // 两人都结束当前回合
                 this.phase = Player.PHASE.ACTION_END;
-                console.info('action-end');
+                console.info(`[${this.id}]action-end`);
             }
             this.endPhaseEnd(dataOpt, emit); // 结束阶段结束
         }

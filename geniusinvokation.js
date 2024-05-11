@@ -614,7 +614,7 @@ export class GeniusInvokationGame {
     doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
         if (slotres == undefined) return;
         const { cmds, slotIds: [hidx, slot] } = slotres;
-        const subtypeList = ['weaponSlot', 'artifactSlot', '', '', '', '', 'talentSlot'];
+        const subtypeList = ['weaponSlot', 'artifactSlot', , , , , 'talentSlot'];
         const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
         curSlot.selected = true;
         this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);

@@ -206,7 +206,7 @@ export class GeniusInvokationGame {
                 this.players[cidx].status = Player.STATUS.PLAYING;
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
             }
-            this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit); // 角色状态发动
+            this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, isQuickAction, dataOpt, emit); // 角色状态发动
             this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step); // 召唤物行动
             this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, step); // 场地效果发动
             this.endPhase(endPhase, cidx, isEndAtk, dataOpt, emit); // 结束回合
@@ -530,7 +530,7 @@ export class GeniusInvokationGame {
         this.players[this.currentPlayerIdx ^ 1].canAction = true;
         this.log.push(`[${this.players[cidx].name}]结束了回合`);
     }
-    doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, dataOpt, emit) { // 角色状态发动
+    doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, isQuickAction, dataOpt, emit) { // 角色状态发动
         if (currStatus == undefined || statuscmd == undefined) return;
         const [cmd, type] = statuscmd;
         const status = ['inStatus', 'outStatus'][type];
@@ -550,7 +550,7 @@ export class GeniusInvokationGame {
             dataOpt.isSendActionInfo = false;
             this.completeTask(dataOpt);
             emit(dataOpt, `${emitFlag}end`);
-            if (curStatus.type.includes(13)) this.changeTurn(cidx, isEndAtk, false, false, 'doStatus', dataOpt, emit);
+            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doStatus', dataOpt, emit);
         }, 1000);
     }
     doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step) { // 召唤物行动
@@ -734,17 +734,16 @@ export class GeniusInvokationGame {
                     const heros = this.players[pidx].heros;
                     const hLen = heros.filter(h => h.hp > 0).length;
                     let nhidx = -1;
+                    const livehidxs = heros.map((h, hi) => ({ hi, hp: h.hp })).filter(v => v.hp > 0).map(v => v.hi);
                     if (sdir == 0) {
                         nhidx = hidxs[0];
-                        const livehidxs = heros.map((h, hi) => ({ hi, hp: h.hp })).filter(v => v.hp > 0).map(v => v.hi);
                         if (heros[nhidx].hp <= 0) {
                             const [[nnhidx]] = livehidxs.map(v => [v, Math.abs(v - nhidx)])
                                 .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
                             nhidx = nnhidx;
                         }
                     } else {
-                        nhidx = (heros.findIndex(h => h.isFront) + sdir + hLen) % hLen;
-                        while (heros[nhidx].hp <= 0) nhidx = (nhidx + sdir + hLen) % hLen;
+                        nhidx = livehidxs[(livehidxs.indexOf((heros.findIndex(h => h.isFront))) + sdir + hLen) % hLen];
                     }
                     this._clearObjAttr(dataOpt, ['switchToSelf']);
                     this.changeHero(pidx, nhidx, dataOpt);

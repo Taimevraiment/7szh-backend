@@ -190,7 +190,7 @@ export class GeniusInvokationGame {
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
                 const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && v.cmd.isOppo);
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
-                    dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit);
+                    dmgElements, currSummon, currStatus, currCard, isSwitch, dataOpt, emit);
             }
             if (elTips) dataOpt.elTips = elTips;
             this.doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit);
@@ -348,7 +348,7 @@ export class GeniusInvokationGame {
         this.startTimer(dataOpt);
     }
     getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
-        dmgElements, currSummon, currStatus, isSwitch, dataOpt, emit
+        dmgElements, currSummon, currStatus, currCard, isSwitch, dataOpt, emit
     ) { // 受伤
         if (willDamage == undefined) return;
         dataOpt.willAttachs = willAttachs;
@@ -426,7 +426,7 @@ export class GeniusInvokationGame {
         if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && !isDie) {
             this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'getDamage-status', dataOpt, emit);
         }
-        if (currStatus != undefined) this.players[cidx].canAction = true;
+        if (currStatus != undefined || currCard != undefined) this.players[cidx].canAction = true;
     }
     heal(willHeals, dataOpt) { // 回血
         if (willHeals == undefined) return;

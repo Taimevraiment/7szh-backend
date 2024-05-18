@@ -170,21 +170,20 @@ export class GeniusInvokationGame {
             if (changeFrom != undefined) dataOpt.changeFrom = changeFrom;
             if ((currSkill?.type ?? -1) > 0 || isUseSkill) dataOpt.isUseSkill = true;
             if (updateToServerOnly) return;
+            if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (cmds) this.doCmd(cmds, cidx, dataOpt, emit);
             if (resetOnly) {
                 this.players[cidx].playerInfo.disCardCnt = 0;
                 this.players[cidx].playerInfo.reconcileCnt = 0;
-                if (++this.resetOnly < 2) return;
-                this.resetOnly = 0;
+                if (++this.resetOnly >= 2) this.resetOnly = 0;
                 dataOpt.resetOnly = true;
-                return emit(dataOpt, 'reset');
+                return emit(dataOpt, `reset-${cidx}`);
             }
             this.changeCard(cidxs, cidx, dataOpt, emit); // 换牌
             if (isEndAtk != undefined) dataOpt.isEndAtk = isEndAtk;
             this.modifyHero(hidx, cidx, isChangeHero, dieChangeBack, isQuickAction, isEndAtk, dataOpt, emit); // 改变角色状态
             this.doDice(dices, cidx, dataOpt, emit); // 掷骰子
             this.startPhaseEnd(dataOpt); // 开始阶段结束
-            if (handCards != undefined) this.players[cidx].handCards = [...handCards];
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
             this.useCard(currCard, reconcile, cardres, cidx, hidxs, isInvalid, dataOpt, emit); // 出牌
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
@@ -760,7 +759,7 @@ export class GeniusInvokationGame {
                 });
             } else if (cmd == 'addCard') {
                 const pidx = cidx ^ +isOppo;
-                this.players[pidx].willAddCard = [...card];
+                this.players[pidx].willAddCard.push(...card);
                 setTimeout(() => {
                     this.players[pidx].willAddCard = [];
                     const scope = hidxs?.[0] ?? 0;

@@ -766,9 +766,15 @@ export class GeniusInvokationGame {
                     const pileLen = this.players[pidx].pile.length;
                     let restCnt = cnt;
                     if (element == 0) { // 随机
+                        let cscope = scope > 0 ? Math.max(1, scope - cnt) : scope < 0 ? Math.min(-1, scope + cnt) : scope;
                         while (restCnt-- > 0) {
-                            let pos = (pileLen + Math.floor(Math.random() * (scope || pileLen))) % pileLen;
-                            if (scope < 0) ++pos;
+                            let pos = (pileLen + Math.floor(Math.random() * (cscope || pileLen))) % pileLen;
+                            if (scope < 0) {
+                                ++pos;
+                                cscope = Math.max(scope, cscope - 1);
+                            } else if (scope > 0) {
+                                cscope = Math.min(scope, cscope + 1);
+                            }
                             this.players[pidx].pile.splice(pos, 0, card.shift());
                         }
                     } else { // 均匀

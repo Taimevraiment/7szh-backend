@@ -205,6 +205,7 @@ export class GeniusInvokationGame {
                 this.players[cidx].status = Player.STATUS.PLAYING;
                 this.players[cidx ^ 1].status = Player.STATUS.WAITING;
             }
+            this.doSkill(currSkill, cidx, isEndAtk, isQuickAction, dataOpt, emit); // 角色技能发动
             this.doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, isQuickAction, dataOpt, emit); // 角色状态发动
             this.doSummon(currSummon, cidx, summonee, outStatus, smncmds, isEndAtk, isQuickAction, dataOpt, emit, step); // 召唤物行动
             this.doSite(currSite, cidx, site, siteres, isEndAtk, isQuickAction, dataOpt, emit, step); // 场地效果发动
@@ -442,7 +443,7 @@ export class GeniusInvokationGame {
         });
     }
     useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
-        if (currSkill == undefined || currSkill.type <= 0) return;
+        if (currSkill == undefined || currSkill.type <= 0 || currSkill.type > 3) return;
         dataOpt.actionAfter = [cidx, 2];
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         this.players[cidx].tarhidx = tarhidx;
@@ -529,6 +530,39 @@ export class GeniusInvokationGame {
         this.players[this.currentPlayerIdx ^ 1].canAction = true;
         this.log.push(`[${this.players[cidx].name}]结束了回合`);
     }
+    doSkill(currSkill, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 技能效果发动
+        if (currSkill == undefined || currSkill != -2) return;
+        const { hidx, skidx } = currSkill;
+        const hero = this.players[cidx].heros[hidx];
+        const skill = hero.skills[skidx];
+        hero.isSelected = 1;
+        this.log.push(`[${this.players[cidx].name}][${SKILL_TYPE[skill.type]}][${skill.name}]发动`);
+        dataOpt.isSendActionInfo = 500;
+        setTimeout(() => {
+            hero.isSelected = 0;
+            dataOpt.isSendActionInfo = false;
+            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
+        }, 500);
+    }
+    doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
+        if (slotres == undefined) return;
+        const { cmds, slotIds: [hidx, slot] } = slotres;
+        const subtypeList = ['weaponSlot', 'artifactSlot', , , , , 'talentSlot'];
+        const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
+        curSlot.selected = true;
+        this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
+        dataOpt.isSendActionInfo = 700;
+        this.doCmd(cmds, cidx, dataOpt, emit);
+        if (isEndAtk) this.players[cidx].canAction = false;
+        setTimeout(() => {
+            this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
+            delete dataOpt.willHeals;
+            dataOpt.isSendActionInfo = false;
+            this.completeTask(dataOpt);
+            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
+            // if (!isEndAtk) emit(dataOpt, 'doSlot');
+        }, 500);
+    }
     doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, isQuickAction, dataOpt, emit) { // 角色状态发动
         if (currStatus == undefined || statuscmd == undefined) return;
         const [cmd, type] = statuscmd;
@@ -610,25 +644,6 @@ export class GeniusInvokationGame {
             }
         }
     }
-    doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
-        if (slotres == undefined) return;
-        const { cmds, slotIds: [hidx, slot] } = slotres;
-        const subtypeList = ['weaponSlot', 'artifactSlot', , , , , 'talentSlot'];
-        const curSlot = this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]] = slot;
-        curSlot.selected = true;
-        this.log.push(`[${this.players[cidx].name}][${curSlot.name}]发动`);
-        dataOpt.isSendActionInfo = 700;
-        this.doCmd(cmds, cidx, dataOpt, emit);
-        if (isEndAtk) this.players[cidx].canAction = false;
-        setTimeout(() => {
-            this.players[cidx].heros[hidx][subtypeList[slot.subType[0]]].selected = false;
-            delete dataOpt.willHeals;
-            dataOpt.isSendActionInfo = false;
-            this.completeTask(dataOpt);
-            if (isEndAtk) this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
-            else emit(dataOpt, 'doSlot');
-        }, 500);
-    }
     endPhaseEnd(dataOpt, emit) { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
         this.currentPlayerIdx = this.startIdx;
@@ -662,8 +677,8 @@ export class GeniusInvokationGame {
         dataOpt.changeFrom = ohidx;
     }
     dispatchCard(playerIdx, event, dataOpt, emit) {
-        const { subtype = [], card: gcard = [], hidxs: exclude = [], isAttach = false } = event;
-        let { cnt } = event;
+        const { subtype = [], hidxs: exclude = [], isAttach = false } = event;
+        let { cnt, card: gcard = [] } = event;
         if (typeof subtype == 'number') subtype = [subtype];
         if (gcard?.length == undefined) gcard = [gcard];
         while (cnt-- > 0) {

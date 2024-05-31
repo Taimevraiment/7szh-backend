@@ -464,7 +464,7 @@ export class GeniusInvokationGame {
             canChange = isEndAtk && (!dieChangeBack && !isOppoActionEnd && !isQuickAction ||
                 dieChangeBack && this.players[cidx]?.phase < Player.PHASE.ACTION_END);
             if (isOppoActionEnd) timeout = 2000;
-        } else if (['useSkill', 'doSlot', 'doSummon', 'doSite', 'getDamage-status', 'useCard', 'doStatus'].includes(type)) { // 如果对方已经结束则不转变
+        } else if (['useSkill', 'doSlot', 'doSummon', 'doSite', 'getDamage-status', 'useCard', 'doStatus', 'doSkill'].includes(type)) { // 如果对方已经结束则不转变
             canChange = !isOppoActionEnd && isEndAtk && !isQuickAction;
             if (['doSummon', 'doStatus', 'doSlot'].includes(type)) timeout = 0;
         } else if (type == 'endPhase') {
@@ -531,18 +531,19 @@ export class GeniusInvokationGame {
         this.log.push(`[${this.players[cidx].name}]结束了回合`);
     }
     doSkill(currSkill, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 技能效果发动
-        if (currSkill == undefined || currSkill != -2) return;
-        const { hidx, skidx } = currSkill;
+        if (currSkill == undefined || currSkill.type != -2) return;
+        const { hidx, skidx, isGameStart } = currSkill;
         const hero = this.players[cidx].heros[hidx];
         const skill = hero.skills[skidx];
         hero.isSelected = 1;
         this.log.push(`[${this.players[cidx].name}][${SKILL_TYPE[skill.type]}][${skill.name}]发动`);
-        dataOpt.isSendActionInfo = 500;
+        dataOpt.isSendActionInfo = 1000;
         setTimeout(() => {
             hero.isSelected = 0;
             dataOpt.isSendActionInfo = false;
-            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
-        }, 500);
+            if (!isGameStart) this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
+            else emit(dataOpt, 'doSkill');
+        }, 1000);
     }
     doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
         if (slotres == undefined) return;

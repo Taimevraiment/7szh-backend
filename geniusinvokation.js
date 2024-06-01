@@ -471,6 +471,7 @@ export class GeniusInvokationGame {
             canChange = isEndAtk;
             timeout = 100;
         }
+        if (!canChange) timeout = 0;
         setTimeout(() => {
             if (canChange) {
                 this.players[this.currentPlayerIdx].status = Player.STATUS.WAITING;
@@ -532,7 +533,7 @@ export class GeniusInvokationGame {
     }
     doSkill(currSkill, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 技能效果发动
         if (currSkill == undefined || currSkill.type != -2) return;
-        const { hidx, skidx, isGameStart } = currSkill;
+        const { hidx, skidx } = currSkill;
         const hero = this.players[cidx].heros[hidx];
         const skill = hero.skills[skidx];
         hero.isSelected = 1;
@@ -541,8 +542,7 @@ export class GeniusInvokationGame {
         setTimeout(() => {
             hero.isSelected = 0;
             dataOpt.isSendActionInfo = false;
-            if (!isGameStart) this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
-            else emit(dataOpt, 'doSkill');
+            this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
         }, 1000);
     }
     doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
@@ -561,7 +561,6 @@ export class GeniusInvokationGame {
             dataOpt.isSendActionInfo = false;
             this.completeTask(dataOpt);
             this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSlot', dataOpt, emit);
-            // if (!isEndAtk) emit(dataOpt, 'doSlot');
         }, 500);
     }
     doStatus(currStatus, statuscmd, cidx, hidx, isEndAtk, isQuickAction, dataOpt, emit) { // 角色状态发动

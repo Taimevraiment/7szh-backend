@@ -17,7 +17,7 @@ export class GeniusInvokationGame {
         this.mostPlayerCnt = 2; // 最多游戏人数
         this.log = []; // 当局游戏的日志
         this.resetOnly = 0; // 达到2进行统一重置
-        this.taskQueueVal = { queue: [], isEndAtk: true, isExecuting: false, statusAtk: 0 }; // 任务队列
+        this.taskQueueVal = { queue: [], isEndAtk: true, isQuickAction: false, isExecuting: false, statusAtk: 0, type: '' }; // 任务队列
         this.countdown = { limit: countdown, curr: 0, timer: null }; // 倒计时
     }
     get currentPlayerIdx() {
@@ -136,7 +136,7 @@ export class GeniusInvokationGame {
         if (data) {
             const { phase, cpidx, did, heros, eheros, cards, cidxs, hidx, dices, currCard, roundPhase, reconcile,
                 handCards, currSkill, endPhase, summonee, currSummon, currSite, site, giveup, step, isInvalid,
-                willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres, rollCnt,
+                willDamage, willAttachs, dmgElements, outStatus, esummon, cardres, siteres, rollCnt, failTask,
                 isEndAtk, statusId, dieChangeBack, isQuickAction, willHeals, slotres, playerInfo,
                 currStatus, statuscmd, hidxs, resetOnly, cmds, elTips, updateToServerOnly, isUseSkill,
                 taskVal, isChangeHero, sites, skillcmds, smncmds, tarhidx, etarhidx, edices, changeFrom, flag } = data;
@@ -148,7 +148,11 @@ export class GeniusInvokationGame {
             // }
             if (roundPhase == this.phase) return;
             if (taskVal || emitFlag === 'roomInfoUpdate') {
-                if (taskVal) this.taskQueueVal = { ...taskVal };
+                if (taskVal) {
+                    this.taskQueueVal.queue = taskVal.queue;
+                    this.taskQueueVal.isExecuting = taskVal.isExecuting;
+                    this.taskQueueVal.statusAtk = taskVal.statusAtk;
+                }
                 dataOpt.taskQueueVal = this.taskQueueVal;
                 emit(dataOpt, 'update-taskQueue');
                 if (taskVal) return;
@@ -156,6 +160,10 @@ export class GeniusInvokationGame {
             const cidx = cpidx ?? this.currentPlayerIdx;
             dataOpt.cidx = cidx;
             if (giveup) return this.giveup(cidx, dataOpt, emit);
+            if (failTask) {
+                dataOpt.isTaskFail = true;
+                this.changeTurn(cidx, true, this.taskQueueVal.isQuickAction, false, this.taskQueueVal.type, dataOpt, emit);
+            }
             if (phase != undefined) this.players[cidx].phase = phase;
             if (roundPhase != undefined) this.phase = roundPhase;
             this.setDeck(did, cidx, cards); // 装配出站卡组
@@ -460,6 +468,9 @@ export class GeniusInvokationGame {
         let canChange = false;
         this.players[cidx].canAction = false;
         let timeout = 2400;
+        this.taskQueueVal.isEndAtk = isEndAtk;
+        this.taskQueueVal.isQuickAction = isQuickAction;
+        this.taskQueueVal.type = type;
         if (type == 'changeHero') { // 如果有速切或对方结束回合或有额外攻击则不转变回合
             canChange = isEndAtk && (!dieChangeBack && !isOppoActionEnd && !isQuickAction ||
                 dieChangeBack && this.players[cidx]?.phase < Player.PHASE.ACTION_END);
@@ -471,7 +482,7 @@ export class GeniusInvokationGame {
             canChange = isEndAtk;
             timeout = 100;
         }
-        if (!canChange) timeout = 0;
+        if (!canChange || dataOpt.isTaskFail) timeout = 0;
         setTimeout(() => {
             if (canChange) {
                 this.players[this.currentPlayerIdx].status = Player.STATUS.WAITING;

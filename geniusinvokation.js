@@ -195,7 +195,7 @@ export class GeniusInvokationGame {
             if (willDamage == undefined && esummon != undefined) this.players[cidx ^ 1].summon = [...esummon];
             this.useCard(currCard, reconcile, cardres, cidx, hidxs, isInvalid, dataOpt, emit); // 出牌
             if (currSummon == undefined || !currSummon.isSelected && summonee == undefined && currSummon?.damage > 0) { // 受伤
-                const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...((skillcmds ?? [])?.[0] ?? [])].some(v => v.cmd.includes('switch') && v.cmd.isOppo);
+                const isSwitch = [...(cmds ?? []), ...(smncmds ?? []), ...(skillcmds?.[0] ?? [])].find(({ cmd, isOppo }) => cmd.includes('switch') && isOppo)?.hidxs?.[0] ?? -1;
                 this.getDamage(willDamage, willAttachs, cidx, esummon, statusId, currSkill, isEndAtk,
                     dmgElements, currSummon, currStatus, currCard, isSwitch, dataOpt, emit);
             }
@@ -271,7 +271,7 @@ export class GeniusInvokationGame {
             this.changeHero(cidx, hidx, dataOpt);
             dataOpt.actionAfter = [cidx, 2];
             if (dieChangeBack) { // 阵亡后选择出战角色
-                dataOpt.dieChangeBack = this.phase;
+                dataOpt.dieChangeBack = this.players[cidx].phase;
                 this.players[cidx].heros[ohidx].inStatus = this.players[cidx].heros[ohidx].inStatus.filter(ist => ist.type.includes(12));
                 this.players[cidx].phase -= 3;
                 const isOppoActioning = this.players[cidx ^ 1].phase == Player.PHASE.ACTION;
@@ -361,11 +361,11 @@ export class GeniusInvokationGame {
         if (willDamage == undefined) return;
         dataOpt.willAttachs = willAttachs;
         dataOpt.dmgElements = dmgElements;
-        let isDie = false;
+        let isDie = -1;
         this.players.forEach((p, pi) => {
-            p.heros.forEach((h, i) => {
+            p.heros.forEach((h, hi) => {
                 if (h.hp > 0) {
-                    h.hp = Math.max(0, h.hp - willDamage[i + (pi ^ 1) * 3].reduce((a, b) => a + Math.max(0, b), 0));
+                    h.hp = Math.max(0, h.hp - willDamage[hi + (pi ^ 1) * this.players[pi ^ 1].heros.length].reduce((a, b) => a + Math.max(0, b), 0));
                     if (h.hp <= 0 && h.inStatus.every(ist => !ist.type.includes(13)) && !h.talentSlot?.subType.includes(-4)) {
                         h.inStatus.forEach(ist => {
                             if (ist.type.indexOf(12) == -1) {
@@ -380,26 +380,30 @@ export class GeniusInvokationGame {
                         h.energy = 0;
                         const winnerIdx = this.isWin(dataOpt, emit);
                         this.players[pi ^ 1].canAction = false;
-                        if (winnerIdx > -1) {
-                            dataOpt.winnerIdx = winnerIdx;
-                        } else if (h.isFront && !isSwitch) {
-                            this.players[pi].phase += 3;
-                            this.players[pi].info = '请选择出战角色...';
-                            this.players[pi ^ 1].info = '等待对方选择出战角色......';
-                            isDie = true;
-                            setTimeout(() => {
-                                h.isFront = false;
-                                this._clearObjAttr(dataOpt);
-                                dataOpt.heroDie = pi;
-                                dataOpt.isSendActionInfo = false;
-                                emit(dataOpt, 'getDamage-heroDie');
-                            }, 2400);
-                        }
+                        if (winnerIdx > -1) dataOpt.winnerIdx = winnerIdx;
+                        else if (h.isFront) isDie = hi;
                     }
                 } else {
-                    willDamage[i + (pi ^ 1) * 3] = [-1, 0];
+                    willDamage[hi + (pi ^ 1) * 3] = [-1, 0];
                 }
             });
+            if (isDie > -1) {
+                if (isSwitch > -1 && this.players[pi].heros[isSwitch].hp > 0) {
+                    isDie = -1;
+                } else {
+                    this.players[pi].phase += 3;
+                    this.players[pi].info = '请选择出战角色...';
+                    this.players[pi ^ 1].info = '等待对方选择出战角色......';
+                    const diehi = isDie;
+                    setTimeout(() => {
+                        this.players[pi].heros[diehi].isFront = false;
+                        this._clearObjAttr(dataOpt);
+                        dataOpt.heroDie = pi;
+                        dataOpt.isSendActionInfo = false;
+                        emit(dataOpt, 'getDamage-heroDie');
+                    }, 2400);
+                }
+            }
         });
         dataOpt.willDamage = willDamage;
         if (esummon) this.players[cidx ^ 1].summon = [...esummon];
@@ -431,7 +435,7 @@ export class GeniusInvokationGame {
                 }, 2000);
             }
         }
-        if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && !isDie) {
+        if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && isDie == -1) {
             this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'getDamage-status', dataOpt, emit);
         }
         if (currStatus != undefined || currCard != undefined) this.players[cidx].canAction = true;
@@ -688,8 +692,8 @@ export class GeniusInvokationGame {
         dataOpt.changeFrom = ohidx;
     }
     dispatchCard(playerIdx, event, dataOpt, emit) {
-        const { subtype = [], hidxs: exclude = [], isAttach = false } = event;
-        let { cnt, card: gcard = [] } = event;
+        const { hidxs: exclude = [], isAttach = false } = event;
+        let { cnt, subtype = [], card: gcard = [] } = event;
         if (typeof subtype == 'number') subtype = [subtype];
         if (gcard?.length == undefined) gcard = [gcard];
         while (cnt-- > 0) {
@@ -757,21 +761,8 @@ export class GeniusInvokationGame {
                 const pidx = cidx ^ +isOppo;
                 setTimeout(() => {
                     const heros = this.players[pidx].heros;
-                    const hLen = heros.filter(h => h.hp > 0).length;
-                    let nhidx = -1;
-                    const livehidxs = heros.map((h, hi) => ({ hi, hp: h.hp })).filter(v => v.hp > 0).map(v => v.hi);
-                    if (sdir == 0) {
-                        nhidx = hidxs[0];
-                        if (heros[nhidx].hp <= 0) {
-                            const [[nnhidx]] = livehidxs.map(v => [v, Math.abs(v - nhidx)])
-                                .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-                            nhidx = nnhidx;
-                        }
-                    } else {
-                        nhidx = livehidxs[(livehidxs.indexOf((heros.findIndex(h => h.isFront))) + sdir + hLen) % hLen];
-                    }
                     this._clearObjAttr(dataOpt, ['switchToSelf']);
-                    this.changeHero(pidx, nhidx, dataOpt);
+                    if (heros[hidxs[0]].hp > 0) this.changeHero(pidx, hidxs[0], dataOpt);
                     dataOpt.isSendActionInfo = false;
                     emit(dataOpt, 'doCmd--' + cmd);
                 }, cnt ?? 100);

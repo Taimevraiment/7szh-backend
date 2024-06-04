@@ -64,6 +64,7 @@ export class GeniusInvokationGame {
                 reconcileCnt: 0,
                 discardIds: [],
                 initCardIds: [],
+                isKillCurRound: false,
             },
             isOffline: false,
         };
@@ -183,6 +184,7 @@ export class GeniusInvokationGame {
             if (resetOnly) {
                 this.players[cidx].playerInfo.disCardCnt = 0;
                 this.players[cidx].playerInfo.reconcileCnt = 0;
+                this.players[cidx].playerInfo.isKillCurRound = failTask;
                 if (++this.resetOnly >= 2) this.resetOnly = 0;
                 dataOpt.resetOnly = true;
                 return emit(dataOpt, `reset-${cidx}`);
@@ -279,13 +281,15 @@ export class GeniusInvokationGame {
                 const isActioning = this.players[cidx].phase == Player.PHASE.ACTION;
                 this.players[cidx ^ 1].info = isActioning ? '对方行动中....' : '对方结束已结束回合...';
                 if (isOppoActioning) this.players[this.currentPlayerIdx].canAction = true;
+                isEndAtk &&= this.taskQueueVal.isEndAtk;
+                isQuickAction ||= this.taskQueueVal.isQuickAction;
             }
             this.changeTurn(cidx, isEndAtk, isQuickAction, dieChangeBack, 'changeHero', dataOpt, emit);
             dataOpt.isSendActionInfo = 1000;
             if (this.players?.[cidx]?.heros?.[hidx] == undefined) {
                 console.error(`ERROR@modifyHero: cidx:${cidx},hidx:${hidx}`);
             }
-            this.log.push(`[${this.players[cidx].name}]切换为[${this.players[cidx].heros[hidx].name}]出战${isQuickAction ? '(快速行动)' : ''}`);
+            this.log.push(`[${this.players[cidx].name}]切换为[${this.players[cidx].heros[hidx].name}]出战${isQuickAction && !dieChangeBack ? '(快速行动)' : ''}`);
         }
     }
     doDice(dices, cidx, dataOpt, emit) { // 掷骰子
@@ -361,8 +365,9 @@ export class GeniusInvokationGame {
         if (willDamage == undefined) return;
         dataOpt.willAttachs = willAttachs;
         dataOpt.dmgElements = dmgElements;
-        let isDie = -1;
+        let isDie = false;
         this.players.forEach((p, pi) => {
+            let heroDie = -1;
             p.heros.forEach((h, hi) => {
                 if (h.hp > 0) {
                     h.hp = Math.max(0, h.hp - willDamage[hi + (pi ^ 1) * this.players[pi ^ 1].heros.length].reduce((a, b) => a + Math.max(0, b), 0));
@@ -381,20 +386,22 @@ export class GeniusInvokationGame {
                         const winnerIdx = this.isWin(dataOpt, emit);
                         this.players[pi ^ 1].canAction = false;
                         if (winnerIdx > -1) dataOpt.winnerIdx = winnerIdx;
-                        else if (h.isFront) isDie = hi;
+                        else if (h.isFront) heroDie = hi;
                     }
                 } else {
                     willDamage[hi + (pi ^ 1) * 3] = [-1, 0];
                 }
             });
-            if (isDie > -1) {
+            if (heroDie > -1) {
                 if (isSwitch > -1 && this.players[pi].heros[isSwitch].hp > 0) {
-                    isDie = -1;
+                    heroDie = -1;
                 } else {
+                    isDie = true;
                     this.players[pi].phase += 3;
                     this.players[pi].info = '请选择出战角色...';
                     this.players[pi ^ 1].info = '等待对方选择出战角色......';
-                    const diehi = isDie;
+                    this.players[pi ^ 1].playerInfo.isKillCurRound = true;
+                    const diehi = heroDie;
                     setTimeout(() => {
                         this.players[pi].heros[diehi].isFront = false;
                         this._clearObjAttr(dataOpt);
@@ -435,7 +442,7 @@ export class GeniusInvokationGame {
                 }, 2000);
             }
         }
-        if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && isDie == -1) {
+        if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && !isDie) {
             this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'getDamage-status', dataOpt, emit);
         }
         if (currStatus != undefined || currCard != undefined) this.players[cidx].canAction = true;
@@ -622,7 +629,7 @@ export class GeniusInvokationGame {
                 cursummon.useCnt = currSummon.useCnt;
                 cursummon.element = currSummon.element;
                 if (smncmds) this.doCmd(smncmds, cidx, dataOpt, emit);
-                dataOpt.isSendActionInfo = 2000;
+                dataOpt.isSendActionInfo = 1600;
                 this.log.push(`[${curPlayer.name}][${currSummon.name}]发动`);
             }
         }

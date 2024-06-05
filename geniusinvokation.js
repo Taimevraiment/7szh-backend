@@ -99,6 +99,7 @@ export class GeniusInvokationGame {
             p.playerInfo.artifactCnt = p.pile.filter(c => c.subType.includes(1)).length;
             p.playerInfo.talentTypeCnt = new Set(p.pile.filter(c => c.subType.includes(6))).size;
             p.playerInfo.talentCnt = p.pile.filter(c => c.subType.includes(6)).length;
+            p.playerInfo.initCardIds = [...new Set(p.pile.map(c => c.id))];
             for (let i = 0; i < 3; ++i) p.pile.sort(() => Math.random() - 0.5);
             for (let i = 0; i < 4; ++i) {
                 const subtype8Idx = p.pile.findIndex((c, ci) => ci >= i && c.subType.includes(8));
@@ -204,7 +205,7 @@ export class GeniusInvokationGame {
             if (elTips) dataOpt.elTips = elTips;
             this.doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit);
             this.heal(willHeals, dataOpt); // 回血
-            this.useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit); // 使用技能
+            this.useSkill(currSkill, cidx, skillcmds, isEndAtk, isQuickAction, tarhidx, etarhidx, dataOpt, emit); // 使用技能
             if (this.players.every(p => p.phase == Player.PHASE.NOT_BEGIN)) { // 两人都已准备
                 this.start();
             }
@@ -251,7 +252,6 @@ export class GeniusInvokationGame {
             player.handCards.forEach(c => log += `[${c.name}]`);
             this.log.push(log);
             player.info = `${this.startIdx == player.pidx ? '我方' : '对方'}先手，等待对方选择......`;
-            player.playerInfo.initCardIds = player.handCards.map(c => c.id);
             setTimeout(() => {
                 player.phase = Player.PHASE.CHOOSE_HERO;
                 emit(dataOpt, 'changeCard');
@@ -461,13 +461,13 @@ export class GeniusInvokationGame {
             });
         });
     }
-    useSkill(currSkill, cidx, skillcmds, isEndAtk, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
+    useSkill(currSkill, cidx, skillcmds, isEndAtk, isQuickAction, tarhidx, etarhidx, dataOpt, emit) { // 使用技能
         if (currSkill == undefined || currSkill.type <= 0 || currSkill.type > 3) return;
         dataOpt.actionAfter = [cidx, 2];
         const frontHero = this.players[cidx].heros[this.players[cidx].hidx];
         this.players[cidx].tarhidx = tarhidx;
         this.players[cidx ^ 1].tarhidx = etarhidx;
-        this.changeTurn(cidx, isEndAtk, false, false, 'useSkill', dataOpt, emit);
+        this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'useSkill', dataOpt, emit);
         dataOpt.isSendActionInfo = 2100;
         this.doCmd(skillcmds[0], cidx, dataOpt, emit);
         this.doCmd(skillcmds[1], cidx ^ 1, dataOpt, emit);

@@ -669,7 +669,7 @@ export class GeniusInvokationGame {
     endPhaseEnd(dataOpt, emit) { // 结束阶段结束
         if (this.phase != Player.PHASE.PHASE_END) return;
         this.currentPlayerIdx = this.startIdx;
-        this.dispatchCard(-1, { cnt: 2 }, dataOpt, emit);
+        // this.dispatchCard(-1, { cnt: 2 }, dataOpt, emit);
         setTimeout(() => {
             ++this.round;
             this.phase = Player.PHASE.DICE;

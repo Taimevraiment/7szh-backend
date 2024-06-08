@@ -748,23 +748,25 @@ export class GeniusInvokationGame {
     }
     doCmd(cmds, cidx, dataOpt, emit) {
         if ((cmds?.length ?? 0) == 0) return;
+        let curRound = -1;
+        const willheals = [];
         for (let i = 0; i < cmds.length; ++i) {
-            const { cmd, cnt, hidxs, card = [], element = 0, isOppo = false } = cmds[i];
+            const { cmd, cnt, hidxs, card = [], element = 0, isOppo = false, round = 0 } = cmds[i];
             if (cmd == 'getCard') {
                 this.dispatchCard(cidx ^ +isOppo, cmds[i], dataOpt, emit);
             } else if (cmd == 'heal') {
-                if (dataOpt.willHeals == undefined) dataOpt.willHeals = [-1, -1, -1, -1, -1, -1];
+                if (curRound != round) {
+                    willheals.push([-1, -1, -1, -1, -1, -1]);
+                    curRound = round;
+                }
                 this.players[cidx].heros.forEach((h, hi) => {
-                    const heal = Math.min(cnt, h.maxhp - h.hp);
-                    if (h.hp > 0 && heal >= 0 && (hidxs?.includes(hi) || hidxs == undefined && h.isFront)) {
-                        h.hp += heal;
-                        dataOpt.willHeals[hi + (cidx ^ 1) * 3] = heal;
+                    if (h.hp > 0 && (hidxs?.includes(hi) || hidxs == undefined && h.isFront)) {
+                        const hli = hi + (cidx ^ 1) * 3;
+                        if (willheals[curRound][hli] == -1) willheals[curRound][hli] = 0;
+                        willheals[curRound][hli] += cnt;
                     }
                 });
             } else if (cmd.startsWith('switch-')) {
-                let sdir = 0;
-                if (cmd == 'switch-before') sdir = -1;
-                else if (cmd == 'switch-after') sdir = 1;
                 const pidx = cidx ^ +isOppo;
                 setTimeout(() => {
                     const heros = this.players[pidx].heros;
@@ -833,6 +835,17 @@ export class GeniusInvokationGame {
                 }, 1500);
             }
         }
+        willheals.forEach((whl, whli) => {
+            dataOpt.willHeals = undefined;
+            if (whli > 0) {
+                setTimeout(() => {
+                    this.heal(whl, dataOpt);
+                    emit(dataOpt, 'doCmd--heal-r' + whli);
+                }, 1000 * whli);
+            } else {
+                this.heal(whl, dataOpt);
+            }
+        });
     }
     completeTask(dataOpt) {
         // this.taskQueueVal.step = -1;

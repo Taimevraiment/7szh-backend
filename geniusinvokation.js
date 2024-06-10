@@ -488,7 +488,7 @@ export class GeniusInvokationGame {
             if (isOppoActionEnd) timeout = 2000;
         } else if (['useSkill', 'doSlot', 'doSummon', 'doSite', 'getDamage-status', 'useCard', 'doStatus', 'doSkill'].includes(type)) { // 如果对方已经结束则不转变
             canChange = !isOppoActionEnd && isEndAtk && !isQuickAction;
-            if (['doSummon', 'doStatus', 'doSlot'].includes(type)) timeout = 0;
+            if (['doSummon', 'doStatus', 'doSlot', 'doSkill'].includes(type)) timeout = 0;
         } else if (type == 'endPhase') {
             canChange = isEndAtk;
             timeout = 100;
@@ -835,13 +835,15 @@ export class GeniusInvokationGame {
                 }, 1500);
             }
         }
+        if (willheals.length > 1) this.players[cidx].canAction = false;
         willheals.forEach((whl, whli) => {
-            dataOpt.willHeals = undefined;
             if (whli > 0) {
                 setTimeout(() => {
+                    dataOpt.willHeals = undefined;
                     this.heal(whl, dataOpt);
+                    if (whli == willheals.length - 1) this.players[cidx].canAction = true;
                     emit(dataOpt, 'doCmd--heal-r' + whli);
-                }, 1000 * whli);
+                }, 1900 * whli);
             } else {
                 this.heal(whl, dataOpt);
             }

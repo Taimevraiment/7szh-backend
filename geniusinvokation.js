@@ -565,7 +565,7 @@ export class GeniusInvokationGame {
             hero.isSelected = 0;
             dataOpt.isSendActionInfo = false;
             this.changeTurn(cidx, isEndAtk, isQuickAction, false, 'doSkill', dataOpt, emit);
-        }, 1000);
+        }, 700);
     }
     doSlot(slotres, cidx, isEndAtk, isQuickAction, dataOpt, emit) { // 装备效果发动
         if (slotres == undefined) return;

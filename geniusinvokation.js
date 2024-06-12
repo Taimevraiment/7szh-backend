@@ -439,7 +439,7 @@ export class GeniusInvokationGame {
                     if (isSwitchAtking) dataOpt.isSwitchAtking = true;
                     this.completeTask(dataOpt);
                     emit(dataOpt, `getDamage-${status}`);
-                }, 2000);
+                }, 1600);
             }
         }
         if (currSkill == undefined && currSummon == undefined && this.phase == Player.PHASE.ACTION && !isDie) {

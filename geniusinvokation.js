@@ -351,7 +351,7 @@ export class GeniusInvokationGame {
             }
             if (currCard.subType.includes(7)) {
                 this.players[cidx].canAction = false;
-                if (currCard.type == 2 && (currCard.subType.includes(6) || isInvalid)) {
+                if (currCard.type == 2 || isInvalid) {
                     this.changeTurn(cidx, true, false, false, 'useCard', dataOpt, emit);
                 }
             } else dataOpt.actionStart = cidx;

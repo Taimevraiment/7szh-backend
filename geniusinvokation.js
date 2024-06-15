@@ -108,9 +108,7 @@ export class GeniusInvokationGame {
             }
             p.handCards = [...p.pile.splice(0, 5)];
             p.info = `${this.startIdx == p.pidx ? '我方' : '对方'}先手`;
-            let log = `[${p.name}]获得手牌`;
-            p.handCards.forEach(c => log += `[${c.name}]`);
-            this.log.push(log);
+            this.log.push(p.handCards.reduce((a, c) => a += `[${c.name}]`, `[${p.name}]获得手牌`));
         });
         console.info(`[${this.id}]start`);
     }
@@ -237,9 +235,20 @@ export class GeniusInvokationGame {
     changeCard(cidxs, cidx, dataOpt, emit) { // 换牌
         if (cidxs == undefined) return;
         const player = this.players[cidx];
+        const idxPool = [];
         while (cidxs.length > 0) {
             const cardidx = cidxs.shift();
-            const ranIdx = Math.floor(Math.random() * player.pile.length);
+            const genRanIdx = () => {
+                let idx;
+                while (true) {
+                    idx = Math.floor(Math.random() * player.pile.length);
+                    if (!idxPool.includes(idx)) {
+                        idxPool.push(idx);
+                        return idx;
+                    }
+                }
+            }
+            const ranIdx = genRanIdx();
             [player.handCards[cardidx], player.pile[ranIdx]] = [player.pile[ranIdx], player.handCards[cardidx]];
         }
         if (this.phase == Player.PHASE.ACTION) {
@@ -248,9 +257,7 @@ export class GeniusInvokationGame {
                 emit(dataOpt, 'changeCard-action');
             }, 800);
         } else {
-            let log = `[${player.name}]换牌后手牌为`;
-            player.handCards.forEach(c => log += `[${c.name}]`);
-            this.log.push(log);
+            this.log.push(player.handCards.reduce((a, c) => a + `[${c.name}]`, `[${player.name}]换牌后手牌为`));
             player.info = `${this.startIdx == player.pidx ? '我方' : '对方'}先手，等待对方选择......`;
             setTimeout(() => {
                 player.phase = Player.PHASE.CHOOSE_HERO;

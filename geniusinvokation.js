@@ -811,8 +811,7 @@ export class GeniusInvokationGame {
                             this.players[pidx].pile.splice(pos, 0, card.shift());
                         }
                     } else { // 均匀
-                        const step = Math.floor((scope || pileLen) / (cnt + 1));
-                        if (scope < 0) ++step;
+                        const step = Math.floor((scope || pileLen) / (cnt + 1)) + (scope < 0 ? 1 : 0);
                         while (restCnt-- > 0) {
                             let pos = (pileLen + step * (cnt - restCnt)) % pileLen;
                             this.players[pidx].pile.splice(pos, 0, card.shift());
